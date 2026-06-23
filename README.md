@@ -88,28 +88,50 @@ For a deep dive into the registry setup, session configuration, and exact MCP fl
 
 ## Quick Start
 
-### Prerequisites
+### Four entry points — pick your language
 
-- Rust (stable) with `cargo`
-- Node.js 18+ with `npm`
-- [Tauri CLI](https://tauri.app/start/): `cargo install tauri-cli`
-
-### Run the Desktop App
-
+**Web frontend (no Tauri required — fastest start)**
 ```sh
-# Install UI dependencies
-cd agent_demo/src-ui && npm install
+# Terminal 1: start the backend
+cd coral-server && cargo run
 
-# Start in dev mode (Vite dev server + Tauri hot reload)
+# Terminal 2: start the UI
+cd agent_demo/src-ui && npm install && npm run dev
+# → http://localhost:5173
+```
+
+**Tauri desktop app**
+```sh
+cd agent_demo/src-ui && npm install
 cd ../src-tauri && cargo tauri dev
 ```
 
-### Run the REST API
+**TypeScript agent runtime**
+```sh
+cd packages/agent-core-ts && npm install
+# write your strategy, run with ts-node or compile
+```
+
+**Rust agent runtime**
+```sh
+cd agent_demo && cargo build
+# impl Strategy for MyStrategy — full Rust
+```
+
+**Python / CoralOS agent**
+```sh
+docker run -p 8001:8001 coralprotocol/coral-server:latest
+# write coral_agent.py — pure Python, no Rust needed
+```
+
+### Environment setup
 
 ```sh
-# Start coral-server on http://0.0.0.0:8080
-cd coral-server && cargo run
+cp .env.example .env
+# fill in VITE_HELIUS_API_KEY — get a free key at helius.dev
 ```
+
+See [docs/provider-keys.md](docs/provider-keys.md) for step-by-step key setup.
 
 ### Build
 
@@ -126,10 +148,12 @@ cd coral-server && cargo build --release
 | Directory | Purpose |
 |-----------|---------|
 | `agent_demo/` | Tauri workspace — Rust backend + React frontend |
-| `agent_demo/agent-core/` | Core Rust library: agent lifecycle, messaging, workflows, Solana Pay, Helius, Jito |
+| `agent_demo/agent-core/` | Core Rust library: agent lifecycle, messaging, workflows, Solana Pay, Helius |
 | `agent_demo/src-tauri/` | Tauri backend: IPC commands, CoralOS HTTP client |
 | `agent_demo/src-ui/` | React frontend: Vite + Tailwind + @xyflow/react |
 | `coral-server/` | Axum REST API wrapping agent-core (port 8080) |
+| `packages/agent-core-ts/` | TypeScript agent runtime — identical concepts to agent-core |
+| `packages/sdk/` | TypeScript HTTP client for coral-server |
 | `ref/` | Read-only reference implementations — do not modify |
 
 ## Key Technical Constraints

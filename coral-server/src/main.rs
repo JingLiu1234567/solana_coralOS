@@ -1,13 +1,10 @@
-//! `coral-server` — Axum REST API wrapping [`agent_core::AgentManager`].
+//! coral-server — Axum REST API wrapping `agent_core::AgentManager`.
 //!
-//! Listens on `0.0.0.0:8080` and exposes four resource groups:
-//! - `GET/POST /api/v1/agents` — agent CRUD
-//! - `GET/POST /api/v1/workflows` — workflow management
-//! - `POST/GET  /api/v1/messages` — message bus
-//! - `GET/POST  /api/v1/state`    — shared key-value state
+//! Listens on 0.0.0.0:8080.
 
 use axum::{routing::get, Json, Router};
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -15,10 +12,35 @@ use agent_core::AgentManager;
 
 mod api;
 
-/// Shared application state injected into every Axum handler via [`axum::extract::State`].
+/// Recorded payment flow (request → 402 → payment → delivery).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PaymentFlowRecord {
+    pub id: String,
+    pub agent_id: String,
+    pub endpoint: String,
+    pub status: String,
+    pub protocol: Option<String>,
+    pub amount: Option<u64>,
+    pub recipient: Option<String>,
+    pub token: Option<String>,
+    pub payment_header: Option<String>,
+    pub response_body: Option<String>,
+    pub error: Option<String>,
+    pub request_at: String,
+    pub challenge_at: Option<String>,
+    pub payment_at: Option<String>,
+    pub delivery_at: Option<String>,
+}
+
+/// Shared application state injected into every Axum handler.
 #[derive(Clone)]
 pub struct AppState {
     pub manager: Arc<AgentManager>,
+    pub flows: Arc<Mutex<Vec<PaymentFlowRecord>>>,
+    pub coralos_url: Arc<Mutex<String>>,
+    pub coralos_token: Arc<Mutex<String>>,
+    /// Tracks which agent names have an active CoralOS MCP loop.
+    pub mcp_sessions: Arc<Mutex<std::collections::HashMap<String, bool>>>,
 }
 
 #[tokio::main]
@@ -27,6 +49,10 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState {
         manager: Arc::new(AgentManager::new()),
+        flows: Arc::new(Mutex::new(Vec::new())),
+        coralos_url: Arc::new(Mutex::new(String::new())),
+        coralos_token: Arc::new(Mutex::new(String::new())),
+        mcp_sessions: Arc::new(Mutex::new(std::collections::HashMap::new())),
     };
 
     let app = Router::new()
@@ -35,6 +61,9 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/workflows", api::workflows::routes())
         .nest("/api/v1/messages", api::messaging::routes())
         .nest("/api/v1/state", api::shared_state::routes())
+        .nest("/api/v1/solana-pay", api::solana_pay::routes())
+        .nest("/api/v1/pay-demo", api::pay_demo::routes())
+        .nest("/api/v1/coralos", api::coralos::routes())
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)

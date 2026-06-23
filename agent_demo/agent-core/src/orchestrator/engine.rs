@@ -7,6 +7,7 @@ use super::workflow::{Workflow, WorkflowStatus};
 ///
 /// All mutations go through [`update_workflow`], which holds the lock for the
 /// duration of the callback, making multi-field updates atomic.
+#[derive(Clone)]
 pub struct WorkflowEngine {
     workflows: Arc<Mutex<HashMap<String, Workflow>>>,
 }

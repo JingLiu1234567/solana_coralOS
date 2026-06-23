@@ -4,6 +4,9 @@
 //! that returns a [`Router`](axum::Router) ready to be nested under the versioned prefix.
 
 pub mod agents;
+pub mod coralos;
 pub mod messaging;
+pub mod pay_demo;
 pub mod shared_state;
+pub mod solana_pay;
 pub mod workflows;

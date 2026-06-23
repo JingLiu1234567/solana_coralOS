@@ -160,11 +160,15 @@ Every one of these is a real use case. Every one of them works with the same pay
 
 ---
 
-## What is still being built
+## Status: fully implemented
 
-- `HeliusPaymentMonitorStrategy` — the polling loop that watches for incoming transfers
-- `HeliusConfig::devnet_from_key()` — devnet endpoint support
-- Seller agent "deliver" action — what happens after payment confirmed
-- UI panels — the two-panel Pay Demo tab showing both agents live
+All components described in this document are implemented and working:
 
-Everything else is already in the repo. The payment rails, the agent runtime, the Helius client, the Solana Pay URL logic — all present. What remains is wiring the reaction: payment confirmed → seller delivers.
+- `TritonPaymentMonitorStrategy` — real-time WebSocket account monitoring via Helius devnet
+- Helius devnet endpoints (`https://devnet.helius-rpc.com/?api-key=...`)
+- Seller agent delivers data via pay.sh after payment confirmed on-chain
+- Two-panel Pay Demo tab in the UI showing both agents live with action feeds
+- Payment flow debugger showing the full request → 402 → payment → delivery sequence
+- Web frontend mode via `cargo run` + `npm run dev` (no Tauri required)
+- TypeScript agent runtime in `packages/agent-core-ts/` (identical concepts to Rust)
+- HTTP SDK in `packages/sdk/` for calling coral-server from any JS/TS project

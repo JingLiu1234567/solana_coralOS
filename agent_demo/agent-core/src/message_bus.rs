@@ -55,6 +55,7 @@ impl AgentMessage {
 ///
 /// Retains the last 1 000 messages. Unread counts are tracked per recipient
 /// for direct messages only; broadcasts are assumed to be read on demand.
+#[derive(Clone)]
 pub struct MessageBus {
     messages: Arc<Mutex<Vec<AgentMessage>>>,
     unread_counts: Arc<Mutex<HashMap<String, usize>>>,

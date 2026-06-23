@@ -313,6 +313,46 @@ fn get_active_workflows(state: State<AppState>) -> Result<Vec<Workflow>, String>
     Ok(state.manager.get_active_workflows())
 }
 
+// --- Helius agent commands ---
+
+#[tauri::command]
+fn set_agent_helius(state: State<AppState>, id: String, api_key: String) -> Result<bool, String> {
+    let rpc = if api_key.trim().is_empty() {
+        "https://api.devnet.solana.com".to_string()
+    } else {
+        format!("https://devnet.helius-rpc.com/?api-key={}", api_key.trim())
+    };
+    Ok(state.manager.set_rpc(&id, rpc))
+}
+
+#[tauri::command]
+fn create_helius_monitor_agent(
+    state: State<AppState>,
+    id: String,
+    wallet: String,
+    amount_sol: f64,
+    api_key: String,
+    label: Option<String>,
+) -> Result<AgentState, String> {
+    use agent_core::triton::TritonConfig;
+    let (rpc, ws) = if api_key.trim().is_empty() {
+        (
+            "https://api.devnet.solana.com".to_string(),
+            "wss://api.devnet.solana.com".to_string(),
+        )
+    } else {
+        let key = api_key.trim();
+        (
+            format!("https://devnet.helius-rpc.com/?api-key={}", key),
+            format!("wss://devnet.helius-rpc.com/?api-key={}", key),
+        )
+    };
+    let config = TritonConfig::custom(rpc.clone(), rpc.clone(), ws, api_key, "devnet");
+    state.manager
+        .create_triton_monitor_agent(id, wallet, amount_sol, config, label)
+        .ok_or_else(|| "Agent with this ID already exists".to_string())
+}
+
 // --- CoralOS proxy commands ---
 
 #[tauri::command]
@@ -348,6 +388,64 @@ async fn coralos_get_session(
         .get_session(&namespace, &session_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+// --- CoralOS MCP commands ---
+
+/// Join a CoralOS session as a full MCP participant.
+///
+/// Spawns a background task that loops: `wait_for_mention` → handler → `send_message`.
+/// The handler records each mention as an agent action and echoes back a receipt.
+#[tauri::command]
+async fn coralos_mcp_join(
+    state: State<'_, AppState>,
+    connection_url: String,
+    agent_id: String,
+) -> Result<bool, String> {
+    use agent_core::CoralMcpSession;
+
+    let session = CoralMcpSession::connect(&connection_url, &agent_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Clone the manager (cheap — just clones inner Arcs) for the background task.
+    let manager = state.manager.clone();
+    let aid = agent_id.clone();
+
+    tokio::spawn(async move {
+        session
+            .run_loop(move |mention| {
+                let manager = manager.clone();
+                let aid = aid.clone();
+                async move {
+                    let response = format!(
+                        "agent={} received mention from {:?} thread={:?}",
+                        aid, mention.sender, mention.thread_id
+                    );
+                    manager.record_action(
+                        &aid,
+                        agent_core::AgentAction {
+                            timestamp: chrono::Utc::now(),
+                            action_type: "coral-mention".to_string(),
+                            details: mention.text.chars().take(200).collect(),
+                            tx_signature: None,
+                            slot: None,
+                            latency_ms: 0,
+                        },
+                    );
+                    response
+                }
+            })
+            .await;
+    });
+
+    Ok(true)
+}
+
+/// Return true if the named agent exists (used as a simple MCP session proxy check).
+#[tauri::command]
+fn coralos_mcp_status(state: State<AppState>, agent_id: String) -> Result<bool, String> {
+    Ok(state.manager.get_agent_state(&agent_id).is_some())
 }
 
 // --- Solana Pay Agent commands ---
@@ -657,10 +755,14 @@ fn main() {
             fail_workflow_step,
             get_agent_workflows,
             get_active_workflows,
+            set_agent_helius,
+            create_helius_monitor_agent,
             coralos_set_url,
             coralos_set_token,
             coralos_list_sessions,
             coralos_get_session,
+            coralos_mcp_join,
+            coralos_mcp_status,
             python_agent::python_agent_start,
             python_agent::python_agent_stop,
             python_agent::python_agent_status,

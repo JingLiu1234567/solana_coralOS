@@ -6,8 +6,8 @@
 
 pub mod agent;
 pub mod agent_meta;
+pub mod coral_mcp;
 pub mod triton;
-pub mod jito;
 pub mod manager;
 pub mod message_bus;
 pub mod orchestrator;
@@ -18,6 +18,7 @@ pub mod strategy;
 
 pub use agent::{Agent, AgentAction, AgentState};
 pub use agent_meta::{AgentMeta, PayMode};
+pub use coral_mcp::{CoralMcpSession, CoralMention};
 pub use manager::AgentManager;
 pub use message_bus::{AgentMessage, MessageBus};
 pub use orchestrator::{StepStatus, Workflow, WorkflowEngine, WorkflowStatus, WorkflowStep};

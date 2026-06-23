@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { invoke, IS_TAURI, listenEvent } from "./transport";
 
 interface AgentState {
   is_running: boolean;
@@ -201,7 +200,7 @@ function App() {
   const [spDemoResult, setSpDemoResult] = useState<any>(null);
 
   // --- Pay Demo state ---
-  const DEMO_API_KEY = "5bb5fed2-8d33-458b-b7d2-3d18fdbb3da5";
+  const DEMO_API_KEY = import.meta.env.VITE_HELIUS_API_KEY ?? "5bb5fed2-8d33-458b-b7d2-3d18fdbb3da5";
   const [pdSellerId] = useState("pd-seller");
   const [pdBuyerId] = useState("pd-buyer");
   const [pdRecipient, setPdRecipient] = useState("");
@@ -269,14 +268,16 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
-  // Listen for streamed events from the Python side-car agent.
+  // Listen for streamed events from the Python side-car agent (Tauri only).
   useEffect(() => {
-    const unlisten = listen<PythonAgentEvent>("python-agent-event", (e) => {
+    const unlisten = listenEvent<PythonAgentEvent>("python-agent-event", (e) => {
       const ev = e.payload;
       setPyEvents((prev) => [...prev.slice(-199), ev]);
       if (ev.type === "exited") setPyRunning(false);
     });
-    invoke<boolean>("python_agent_status").then(setPyRunning).catch(() => {});
+    if (IS_TAURI) {
+      invoke<boolean>("python_agent_status").then(setPyRunning).catch(() => {});
+    }
     return () => {
       unlisten.then((f) => f());
     };
@@ -417,7 +418,7 @@ function App() {
   };
 
   const handleHelius = async (id: string) => {
-    await invoke("set_agent_helius", { id, apiKey: "5bb5fed2-8d33-458b-b7d2-3d18fdbb3da5" });
+    await invoke("set_agent_helius", { id, apiKey: import.meta.env.VITE_HELIUS_API_KEY ?? "" });
     await refreshLocal();
   };
 
@@ -1534,6 +1535,15 @@ function App() {
 
       {tab === "python-agent" && (
         <div className="space-y-5">
+          {!IS_TAURI && (
+            <div className="card" style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.3)"}}>
+              <p style={{fontSize:"13px",color:"#f59e0b",fontWeight:600,marginBottom:"6px"}}>Tauri Desktop Only</p>
+              <p style={{fontSize:"12px",color:"var(--text-dim)"}}>
+                The Python side-car agent spawns a subprocess and is only available when running inside Tauri.
+                Start the app with <span className="mono">cargo tauri dev</span> to use this feature.
+              </p>
+            </div>
+          )}
           <div className="card space-y-3">
             <div className="flex items-center gap-2">
               <h2 className="section-title" style={{margin:0}}>Python Side-car Agent</h2>

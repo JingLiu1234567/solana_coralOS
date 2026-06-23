@@ -20,6 +20,7 @@ async-trait = "0.1"
 url = "2"
 urlencoding = "2"
 base64 = "0.22.1"
+rmcp = { version = "1.8.0", features = ["client", "transport-streamable-http-client-reqwest", "reqwest-native-tls"] }
 
 
 [dev-dependencies]

@@ -9,6 +9,7 @@ pub enum PayMode {
     Payment,
 }
 
+
 /// Role and lifecycle metadata stored alongside an agent's runtime state.
 ///
 /// Kept separate from [`AgentState`](crate::AgentState) so that IPC snapshots
@@ -20,6 +21,7 @@ pub struct AgentMeta {
     /// Free-form labels for filtering/grouping agents.
     pub tags: Vec<String>,
 }
+
 
 impl Default for AgentMeta {
     fn default() -> Self {

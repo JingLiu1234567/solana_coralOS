@@ -29,6 +29,7 @@ pub struct SharedStateEntry {
 ///
 /// All agents can read; writes are permission-gated by [`AgentManager`].
 /// History is capped at 500 entries to bound memory use.
+#[derive(Clone)]
 pub struct SharedState {
     store: Arc<Mutex<HashMap<String, SharedStateEntry>>>,
     history: Arc<Mutex<Vec<StateChange>>>,

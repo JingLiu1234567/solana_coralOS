@@ -20,6 +20,10 @@ use std::sync::{Arc, Mutex};
 /// Internally the agent map and metadata are each protected by their own `Mutex`.
 /// Callers should avoid holding one lock while acquiring the other to prevent deadlocks;
 /// all methods in this file are written to release the first lock before acquiring the second.
+///
+/// `Clone` is cheap — it clones the inner `Arc` handles, so all clones share the same
+/// underlying state.  This is used by the CoralOS MCP background task in `src-tauri`.
+#[derive(Clone)]
 pub struct AgentManager {
     agents: Arc<Mutex<BTreeMap<String, Arc<Agent>>>>,
     agent_meta: Arc<Mutex<HashMap<String, AgentMeta>>>,

@@ -49,7 +49,7 @@ impl Strategy for RpcPollStrategy {
             if !is_running {
                 break;
             }
-
+            
             let start = std::time::Instant::now();
             let client = RpcClient::new_with_commitment(rpc_url.clone(), CommitmentConfig::confirmed());
 

@@ -1,6 +1,6 @@
 # Pay Skills
 
-MCP skill definitions and provider registry documentation for Pay. This directory contains the instructions that AI assistants read when using Pay via MCP, plus reference guides for contributors.
+MCP skill definitions and provider registry documentation for Pay. This directory contains the instructions 1yes that AI assistants read when using Pay via MCP, plus reference guides for contributors.
 
 ## What Are Pay Skills?
 
@@ -36,6 +36,7 @@ The skill file has three parts:
 ### Triggers
 
 Agents activate the Pay skill when the user says things like:
+
 - "can I use pay to X"
 - "pay for X"
 - "use pay to buy/get X"
@@ -65,6 +66,7 @@ providers/<operator>/<name>.md
 Example: `providers/solana-foundation/bigquery.md`
 
 The registry is:
+
 - **Curated** — entries are validated before publication
 - **Probe-tested** — CI hits each endpoint to verify it returns a valid 402 challenge
 - **Agent-optimized** — descriptions and usage notes are written for AI consumption, not human marketing

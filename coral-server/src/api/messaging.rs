@@ -9,7 +9,7 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -28,9 +28,13 @@ pub struct SendMessageRequest {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/", post(send_message))
+        .route("/", get(get_all_messages).post(send_message))
         .route("/:agent_id", get(get_messages))
         .route("/conversation/:a/:b", get(get_conversation))
+}
+
+async fn get_all_messages(State(state): State<AppState>) -> Json<Vec<AgentMessage>> {
+    Json(state.manager.get_all_messages())
 }
 
 async fn send_message(

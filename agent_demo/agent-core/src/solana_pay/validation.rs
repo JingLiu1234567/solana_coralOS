@@ -117,44 +117,57 @@ pub async fn validate_transfer(
         };
     }
 
-    // Check if recipient is in the account list
-    let recipient_found = if let Some(expected) = expected_recipient {
+    let slot = tx_result.slot;
+    let block_time = tx_result.block_time;
+
+    // Extract account keys and compute transfer amounts in one pass.
+    let (recipient_found, amount_transferred, sender) = {
         let encoded = tx_result.transaction.transaction;
-        let accounts = match encoded {
+        match encoded {
             solana_transaction_status::EncodedTransaction::Json(ui_tx) => {
-                let msg = ui_tx.message;
-                match msg {
+                let keys: Vec<String> = match ui_tx.message {
                     solana_transaction_status::UiMessage::Parsed(parsed) => {
-                        parsed.account_keys.iter().any(|a| a.pubkey == expected)
+                        parsed.account_keys.into_iter().map(|a| a.pubkey).collect()
                     }
-                    solana_transaction_status::UiMessage::Raw(raw) => {
-                        raw.account_keys.iter().any(|a| a == expected)
-                    }
-                }
+                    solana_transaction_status::UiMessage::Raw(raw) => raw.account_keys,
+                };
+
+                let found = expected_recipient
+                    .map(|r| keys.iter().any(|k| k == r))
+                    .unwrap_or(true);
+
+                // Balance increase at recipient's account index = amount received.
+                let amount = expected_recipient
+                    .and_then(|r| keys.iter().position(|k| k == r))
+                    .and_then(|idx| {
+                        let pre = meta.pre_balances.get(idx)?;
+                        let post = meta.post_balances.get(idx)?;
+                        post.checked_sub(*pre)
+                            .map(|diff| diff as f64 / 1_000_000_000.0)
+                    });
+
+                // First account is the fee-payer / sender.
+                let from = keys.into_iter().next();
+
+                (found, amount, from)
             }
-            _ => false,
-        };
-        accounts
-    } else {
-        true
+            _ => (expected_recipient.is_none(), None, None),
+        }
     };
 
-    // Build baseline result
-    let enriched = ValidationResult {
+    ValidationResult {
         valid: recipient_found,
         signature: signature.to_string(),
         recipient_found,
-        amount_transferred: None,
+        amount_transferred,
         token_mint: None,
         token_symbol: None,
-        sender: None,
+        sender,
         description: None,
-        slot: Some(tx_result.slot),
+        slot: Some(slot),
         confirmations: None,
-        timestamp: None,
+        timestamp: block_time.map(|t| t as u64),
         fee_lamports: Some(meta.fee),
         error: None,
-    };
-
-    enriched
+    }
 }
