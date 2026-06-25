@@ -1,6 +1,6 @@
 # @pay/coral-client
 
-Typed HTTP client for the Axum REST API (`api/`) wrapping `agent-core`. Every endpoint on `api/` is exposed as a typed method. Zero runtime dependencies: `@pay/coral-client` uses the built-in `fetch` API only.
+Typed HTTP client for `api-server` (the Express REST API wrapping `@pay/agent-runtime`). Every endpoint is exposed as a typed method. Zero runtime dependencies — uses the built-in `fetch` API only.
 
 ## Table of Contents
 
@@ -562,7 +562,7 @@ const active = await client.getCoralMcpStatus('rust-coral-agent')
 
 ## Exported Types
 
-All types are re-exported from `@pay/coral-client`. They mirror the Rust structs and are compatible with `@pay/agent-runtime` types (same field names, same shapes).
+All types are re-exported from `@pay/coral-client`. They match the `@pay/agent-runtime` types (same field names, same shapes).
 
 ```typescript
 import type {

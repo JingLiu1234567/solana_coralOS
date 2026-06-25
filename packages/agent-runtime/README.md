@@ -1,6 +1,6 @@
 # @pay/agent-runtime
 
-TypeScript multi-agent runtime that mirrors the Rust `agent-core` library concept-for-concept. Use this package to build and run Solana-aware agents entirely in Node.js or the browser. It pairs with `@pay/coral-client` (the HTTP client for coral-server) and with `CoralMcpAgent` for CoralOS MCP sessions.
+The TypeScript agent runtime for this kit. Build and run Solana-aware agents in Node.js: `AgentManager`, pluggable `Strategy`s, a message bus, shared state, a workflow engine, and `CoralMcpAgent` for joining CoralOS (coral-server) MCP sessions. The agents in `coral-agents/` are built on this. It pairs with `@pay/coral-client` (the typed HTTP client for `api-server`).
 
 ## Table of Contents
 
@@ -802,7 +802,7 @@ npx ts-node --esm examples/coral_mcp_example.ts
 import { CoralServerSync } from '@pay/agent-runtime'
 ```
 
-Optional bridge that makes TypeScript agents visible in the coral-server UI and allows them to exchange messages with Rust agents over the HTTP API.
+Optional bridge that registers the agents with a running `api-server` and relays messages over its HTTP API, so they show up alongside HTTP-driven agents.
 
 ### Methods
 
