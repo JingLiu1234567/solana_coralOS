@@ -25,6 +25,8 @@ export interface CoralAgentConfig {
 export interface CoralAgentContext {
   /** Block until the next @mention arrives. Returns null on timeout — keep looping. */
   waitForMention(maxWaitMs?: number): Promise<CoralMention | null>
+  /** Block until a message from `agentName` arrives. Use to wait for a counterparty to come online. */
+  waitForAgent(agentName: string, maxWaitMs?: number): Promise<CoralMention | null>
   /** Reply to a mention in its thread, @mentioning the original sender. */
   reply(mention: CoralMention, content: string): Promise<void>
   /** Send a message into a specific thread, optionally @mentioning agents. */
@@ -61,6 +63,8 @@ export async function startCoralAgent(
 
   const ctx: CoralAgentContext = {
     waitForMention: (maxWaitMs) => agent.waitForMention(maxWaitMs),
+
+    waitForAgent: (agentName, maxWaitMs) => agent.waitForAgent(agentName, maxWaitMs),
 
     reply: async (mention, content) => {
       if (!mention.threadId) throw new Error('mention has no threadId')

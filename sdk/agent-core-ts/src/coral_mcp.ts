@@ -30,7 +30,7 @@ export interface CoralMcpConfig {
 
 export class CoralMcpAgent {
   private client: Client | null = null
-  private toolNames: { waitForMention: string; sendMessage: string; createThread: string } | null = null
+  private toolNames: { waitForMention: string; waitForAgent: string; sendMessage: string; createThread: string } | null = null
   private config: CoralMcpConfig
 
   constructor(config: CoralMcpConfig) {
@@ -61,6 +61,9 @@ export class CoralMcpAgent {
       waitForMention:
         names.find((n) => n.includes("wait_for_mention")) ??
         "coral_wait_for_mention",
+      waitForAgent:
+        names.find((n) => n.includes("wait_for_agent")) ??
+        "coral_wait_for_agent",
       sendMessage:
         names.find((n) => n.endsWith("send_message")) ?? "coral_send_message",
       createThread:
@@ -97,6 +100,35 @@ export class CoralMcpAgent {
 
     const mention = parseMention(text)
     // parseMention returns empty text for timeout responses
+    if (!mention.text) return null
+    return mention
+  }
+
+  /**
+   * Block until a message from a specific agent arrives (CoralOS `coral_wait_for_agent`).
+   * Use this instead of a fixed `setTimeout` to wait for a counterparty (e.g. the seller)
+   * to come online before sending it work. Returns null on timeout.
+   *
+   * Maps to `WaitForAgentMessageInput { agentName, maxWaitMs, currentUnixTime }` — see
+   * coral-server `mcp/tools/WaitForMessageTools.kt`. `maxWaitMs` is server-capped at 60000.
+   */
+  async waitForAgent(agentName: string, maxWaitMs = 30_000): Promise<CoralMention | null> {
+    if (!this.client || !this.toolNames) throw new Error("Not connected — call connect() first")
+
+    const result = await this.client.callTool({
+      name: this.toolNames.waitForAgent,
+      arguments: { agentName, maxWaitMs, currentUnixTime: Date.now() },
+    })
+
+    const text = (result.content as Array<{ type: string; text?: string }>)
+      .filter((c) => c.type === "text")
+      .map((c) => c.text ?? "")
+      .join(" ")
+      .trim()
+
+    if (!text || text === "null" || text === "{}" || text === "[]") return null
+
+    const mention = parseMention(text)
     if (!mention.text) return null
     return mention
   }

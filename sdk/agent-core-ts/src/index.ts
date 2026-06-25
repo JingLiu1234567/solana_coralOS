@@ -7,6 +7,7 @@ export { MessageBus } from './message_bus.js'
 export { SharedState } from './shared_state.js'
 export { WorkflowEngine } from './workflow.js'
 export { CoralServerSync } from './sync.js'
+export { log } from './log.js'
 
 // Strategies
 export { IdleStrategy } from './strategies/idle.js'
