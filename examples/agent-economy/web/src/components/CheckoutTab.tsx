@@ -6,20 +6,32 @@ import { useCheckout } from '../hooks/useCheckout'
 const SERVICES = [
   { id: 'jupiter', name: 'Live SOL→USDC price', desc: 'a Jupiter swap quote' },
   { id: 'coingecko', name: 'Crypto spot price', desc: 'a CoinGecko price' },
-  { id: 'inference', name: 'AI completion', desc: 'an LLM answer' },
+  { id: 'news', name: 'Crypto headlines', desc: 'top news (needs NEWS_API_KEY)' },
+  { id: 'inference', name: 'AI completion', desc: 'an LLM answer (needs ANTHROPIC_API_KEY)' },
 ]
+
+// Services that take a free-text input, and whether it's required.
+const TEXT: Record<string, { required: boolean; placeholder: string; preset: string }> = {
+  inference: { required: true, placeholder: 'Ask the AI anything…', preset: 'Write a haiku about Solana.' },
+  news: { required: false, placeholder: 'Topic (optional) — e.g. solana, bitcoin', preset: '' },
+}
 
 export function CheckoutTab() {
   const { connected } = useWallet()
   const buy = useCheckout()
   const [service, setService] = useState('jupiter')
-  const [prompt, setPrompt] = useState('Write a haiku about Solana.')
+  const [text, setText] = useState('')
   const [steps, setSteps] = useState<string[]>([])
   const [result, setResult] = useState('')
   const [sig, setSig] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const needsPrompt = service === 'inference'
+  const textCfg = TEXT[service]
+
+  function pick(id: string) {
+    setService(id)
+    setText(TEXT[id]?.preset ?? '')
+  }
 
   async function pay() {
     setBusy(true)
@@ -27,7 +39,7 @@ export function CheckoutTab() {
     setResult('')
     setSig('')
     try {
-      const r = await buy(service, needsPrompt ? prompt : '', (s) => setSteps((p) => [...p, s]))
+      const r = await buy(service, textCfg ? text : '', (s) => setSteps((p) => [...p, s]))
       setResult(r.data)
       setSig(r.sig)
     } catch (e) {
@@ -49,7 +61,7 @@ export function CheckoutTab() {
       <div className="services">
         {SERVICES.map((s) => (
           <label key={s.id} className={service === s.id ? 'svc on' : 'svc'}>
-            <input type="radio" name="svc" checked={service === s.id} onChange={() => setService(s.id)} />
+            <input type="radio" name="svc" checked={service === s.id} onChange={() => pick(s.id)} />
             <span>
               <b>{s.name}</b>
               <br />
@@ -59,17 +71,21 @@ export function CheckoutTab() {
         ))}
       </div>
 
-      {needsPrompt && (
+      {textCfg && (
         <textarea
           className="prompt"
-          rows={3}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ask the AI anything…"
+          rows={service === 'inference' ? 3 : 2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={textCfg.placeholder}
         />
       )}
 
-      <button className="primary" onClick={pay} disabled={!connected || busy || (needsPrompt && !prompt.trim())}>
+      <button
+        className="primary"
+        onClick={pay}
+        disabled={!connected || busy || (textCfg?.required && !text.trim())}
+      >
         {busy ? 'Working…' : connected ? 'Buy with Phantom' : 'Connect a wallet first'}
       </button>
 
