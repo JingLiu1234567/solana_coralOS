@@ -15,21 +15,12 @@
 import { startCoralAgent } from '@pay/agent-runtime'
 import { generatePaymentUrl, verifyPayment } from './payment.js'
 import { payFromUrl, getBrokerPublicKey } from './wallet.js'
+import { type Quote, parsePaymentRequired, pickCheapest } from './logic.js'
 
 const SELLERS = (process.env.SWARM_SELLERS || 'seller-cheap,seller-premium')
   .split(',').map((s) => s.trim()).filter(Boolean)
 const MARKUP = parseFloat(process.env.MARKUP ?? '1.2')
 const MAX_SOL = parseFloat(process.env.BROKER_MAX_SOL ?? '0.01')
-
-interface Quote { seller: string; thread: string; amount: number; reference: string; url: string }
-
-function parsePaymentRequired(text: string): Omit<Quote, 'seller' | 'thread'> | null {
-  const amount = parseFloat(text.match(/amount=([\d.]+)/)?.[1] ?? '')
-  const reference = text.match(/reference=([1-9A-HJ-NP-Za-km-z]{32,44})/)?.[1]
-  const url = text.match(/url=(solana:[^\s"\\]+)/)?.[1]
-  if (!amount || !reference || !url) return null
-  return { amount, reference, url }
-}
 
 await startCoralAgent({ agentName: 'broker' }, async (ctx) => {
   console.error(`[broker] wallet ${getBrokerPublicKey()} | sellers=${SELLERS.join(',')} | markup=${MARKUP}`)
@@ -67,8 +58,7 @@ await startCoralAgent({ agentName: 'broker' }, async (ctx) => {
     }
 
     // 2. Buy from the cheapest seller (broker PAYS on-chain).
-    quotes.sort((a, b) => a.amount - b.amount)
-    const best = quotes[0]
+    const best = pickCheapest(quotes)!
     console.error(`[broker] cheapest = ${best.seller} @ ${best.amount} SOL — buying`)
     let data: string
     try {

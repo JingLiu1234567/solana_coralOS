@@ -16,8 +16,8 @@
  */
 import Anthropic from '@anthropic-ai/sdk'
 import { BaseStrategy, type MutableAgentState, untilAborted } from '@pay/agent-runtime'
-import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { signTransfer } from './wallet.js'
+import { guardPayment, type PurchaseGuard } from './guard.js'
 
 /** A parsed HTTP 402 payment challenge. */
 export interface PaymentChallenge {
@@ -168,33 +168,16 @@ export class LLMBuyerStrategy extends BaseStrategy {
 
     if (tu.name === 'pay_and_retry') {
       const input = tu.input as { recipient: string; amountSol: number; reference?: string }
-      const lamports = Math.round(input.amountSol * LAMPORTS_PER_SOL)
 
-      // H2: the recipient MUST come from a challenge we actually received. The "only pay real
-      // challenges" rule is enforced here in code — a prompt injection in fetched data cannot
-      // make the buyer pay an attacker's address.
-      if (!guard.allowedRecipients.has(input.recipient)) {
-        return {
-          type: 'tool_result', tool_use_id: tu.id, is_error: true,
-          content: `refused: recipient ${input.recipient} did not appear in any payment challenge`,
-        }
-      }
-      if (input.reference && !guard.allowedReferences.has(input.reference)) {
-        return {
-          type: 'tool_result', tool_use_id: tu.id, is_error: true,
-          content: `refused: reference ${input.reference} did not appear in any payment challenge`,
-        }
-      }
-      // M3: budget is cumulative across the loop, not per-payment.
-      if (guard.spentLamports + lamports > this.config.budgetLamports) {
-        return {
-          type: 'tool_result', tool_use_id: tu.id, is_error: true,
-          content: `budget exceeded: cumulative ${(guard.spentLamports + lamports) / LAMPORTS_PER_SOL} SOL > ${this.config.budgetLamports / LAMPORTS_PER_SOL} SOL`,
-        }
+      // Payment rules enforced in CODE (see guard.ts), not the prompt: a prompt injection in fetched
+      // data cannot make the buyer pay an unseen recipient/reference (H2) or exceed the budget (M3).
+      const decision = guardPayment(guard, input, this.config.budgetLamports)
+      if (!decision.allowed) {
+        return { type: 'tool_result', tool_use_id: tu.id, is_error: true, content: `refused: ${decision.reason}` }
       }
 
       const sig = await signTransfer(input.recipient, input.amountSol, input.reference)
-      guard.spentLamports += lamports
+      guard.spentLamports += decision.lamports
       state.recordAction('payment-sent', `${input.amountSol} SOL`, sig)
       const retry = await fetch(this.config.endpoint, { headers: { 'x-payment-proof': sig } })
       const body = await retry.text()
@@ -203,11 +186,4 @@ export class LLMBuyerStrategy extends BaseStrategy {
 
     return { type: 'tool_result', tool_use_id: tu.id, is_error: true, content: `unknown tool: ${tu.name}` }
   }
-}
-
-/** Per-purchase, code-enforced trust state: which recipients/references are payable, and total spent. */
-interface PurchaseGuard {
-  allowedRecipients: Set<string>
-  allowedReferences: Set<string>
-  spentLamports: number
 }
