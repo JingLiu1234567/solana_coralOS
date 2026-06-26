@@ -15,25 +15,27 @@ upgrade), clearly marked as opt-in and not needed by the core track.
 
 | Directory | Purpose |
 |-----------|---------|
-| `examples/agent-economy/` | **The track.** `autonomous/` (agent↔agent starter), `bridge/` (human→user-proxy checkout — Express bridge + self-served Phantom UI), `config/coral.toml` (wallet-free MCP config), `quickstart/` (no-Docker bare-metal 402) |
-| `coral-agents/` | Agents coral-server launches: `seller-agent` (fork `service.ts`), `buyer-agent`, `echo-agent` (TypeScript); `user_proxy` (Python — the human's session stand-in, driven via the puppet API) |
-| `packages/agent-runtime/` | TypeScript agent runtime: `AgentManager`, `Strategy`, `MessageBus`, `SharedState`, `WorkflowEngine`, CoralOS MCP client, Solana Pay strategies |
-| `scripts/` | `setup.js` (wallet generation) + smoke tests |
-| `docs/`, `.claude/` | Design docs + the `AGENT_ECONOMY_RESTRUCTURE.md` plan (gates G1–G3), `PRODUCTION_HARDENING.md`, `SECURITY_REVIEW.md` |
+| `examples/marketplace/` | **The track.** `start.ts` launches the market session (buyer + 3 LLM seller personas). |
+| `examples/agent-economy/` | `config/coral.toml` (wallet-free MCP config) + `escrow/` (the Anchor escrow contract — the settlement spine). |
+| `coral-agents/` | Agents coral-server launches: `seller-agent` (LLM bidder + `service.ts` fork point), `buyer-agent` (market loop), and the config-only personas `seller-cheap`/`-premium`/`-lazy`. |
+| `packages/agent-runtime/` | The three pillars: CoralOS MCP client (`startCoralAgent`), Solana Pay (`solana_pay.ts` + devnet guard), LLM (`llm.ts` provider shim), and the market protocol (`market.ts`). |
+| `scripts/` | `setup.js` (wallet generation), `doctor.js` (health check). |
+| `docs/`, `.claude/` | Design docs — `MARKETPLACE.md`, `APIS.md`, `PRODUCTION_HARDENING.md`, `SECURITY_REVIEW.md`. |
 
-The headline (and only) path is `examples/agent-economy/` on stock coral-server. CoralOS is the MCP
-coordination layer only — payments settle agent-side in SOL (no coral-server wallet, no native x402).
+The headline (and only) example is `examples/marketplace/` on stock coral-server. CoralOS is the MCP
+coordination layer only — settlement is the Solana escrow contract, agent-side (no coral-server wallet).
 
 ## Commands
 
-### Run the economy (requires Docker)
+### Run the marketplace (requires Docker)
 
 ```sh
 node scripts/setup.js                                  # generate + fund devnet wallets → .env
-bash build-agents.sh                                   # build seller/buyer/user-proxy images
-docker compose up -d coral bridge                      # coral-server + the human-checkout bridge
-cd examples/agent-economy/autonomous && npm start      # autonomous (agent → agent)
-# open http://localhost:3010                           # human checkout (Phantom), served by the bridge
+bash build-agents.sh                                   # build seller + buyer images (personas reuse seller)
+docker compose up -d coral                             # coral-server (MCP coordinator)
+cd examples/marketplace && npm install && npm start    # launch the market session
+docker logs -f buyer-agent                             # WANT → AWARD → DEPOSITED → RELEASED
+# set LLM_PROVIDER=openai (+ OPENAI_API_KEY) in .env to flip the whole market to OpenAI
 ```
 
 ### packages/agent-runtime (agent runtime)
@@ -48,37 +50,40 @@ cd packages/agent-runtime && npm run build   # dependents (coral-agents, example
 ### Typecheck / test the economy
 
 ```sh
-cd coral-agents/seller-agent && npm install && npm run typecheck && npm test   # incl. replay + payment tests
-cd examples/agent-economy/bridge && npm install && npm run smoke               # headless human-path check (coral must be up)
+cd coral-agents/seller-agent && npm install && npm run typecheck && npm test   # incl. bidder + replay + payment
+cd coral-agents/buyer-agent && npm install && npm run typecheck && npm test    # market loop + parse402
+cd examples/marketplace && npm install && npm run typecheck                     # the session launcher
 ```
 
 ## Architecture
 
-### packages/agent-runtime
+### packages/agent-runtime — the three pillars
 
-The CoralOS MCP client every agent is built on. Two modules:
+Every agent imports these and writes only behavior:
 
-- **`coral_mcp.ts` / `CoralMcpAgent`** — the MCP client: StreamableHTTP transport, dynamic tool
-  discovery, and the four verbs (`waitForMention`, `sendMessage`, `createThread`, `waitForAgent`).
-  `parseMention` normalizes CoralOS's response shapes (tested in `coral_mcp.test.ts`).
-- **`coral_mcp_server.ts` / `startCoralAgent`** — the entrypoint a Docker agent calls to join a
-  CoralOS session; reads the injected `CORAL_CONNECTION_URL` and hands your `run` a `ctx`.
-
-The runtime is purely coordination — payments settle agent-side in each agent's Solana code.
+- **CoralOS** — `coral_mcp.ts` (`CoralMcpAgent`: StreamableHTTP transport, tool discovery,
+  `parseMention`) + `coral_mcp_server.ts` (`startCoralAgent` — joins a session, hands `run` a `ctx`).
+- **Solana** — `solana.ts` (`solanaConnection`/`assertDevnet` guard) + `solana_pay.ts`
+  (`generatePaymentUrl`/`verifyPayment`/`signTransfer`/`loadKeypairB58`, reference-bound).
+- **LLM** — `llm.ts` (`complete()` — SDK-free shim; Anthropic default, `LLM_PROVIDER=openai` flips it).
+- **Market protocol** — `market.ts` (pure WANT/BID/AWARD/ESCROW_REQUIRED/DEPOSITED format+parse +
+  `selectBids`/`pickCheapest`). Coordination only — settlement is the escrow contract, agent-side.
 
 ### coral-agents (what coral-server launches)
 
-- `seller-agent` — speaks `request → PAYMENT_REQUIRED → paid → DELIVERED`; binds payments to a unique
-  Solana Pay **reference** (`payment.ts` `validateTransfer`) + a `ReplayGuard`. Fork point: `service.ts → deliverService()`.
-- `buyer-agent` — autonomous buyer (`index.ts`) + the LLM buyer (`llm_buyer.ts`, code-enforced budget + recipient binding).
-- `echo-agent` — minimal MCP agent (connectivity check).
-- `user_proxy` — Python puppet; the human's session stand-in, driven by the bridge via the puppet API.
+- `seller-agent` — LLM bidder: `WANT → BID` (`bidder.ts`, code-enforced floor/budget/inventory) →
+  `AWARD → ESCROW_REQUIRED → DEPOSITED →` verify escrow funded (`escrow.ts isFunded`) →
+  `deliverService()` (`service.ts`, the fork point) `→ DELIVERED`. Legacy 1:1 `request/paid` kept.
+- `buyer-agent` — market loop: broadcast `WANT`, collect bids, LLM best-value selection (cheapest
+  fallback), `deposit` into escrow, `release` on delivery / `refund` after the deadline (`escrow.ts`).
+- `seller-cheap` / `seller-premium` / `seller-lazy` — config-only personas over the seller image
+  (different `PERSONA`/`FLOOR_SOL`/`SERVICES`); `seller-lazy` self-selects out of non-inventory jobs.
 
-### examples/agent-economy/bridge
+### examples/agent-economy/escrow — the settlement spine
 
-Express server that injects a human's order into a CoralOS session *as* `user-proxy` (puppet API),
-relays the seller's reply, and **self-serves the Phantom checkout UI** (`web/index.html`) at `:3010`.
-Reads replies from the session's extended state (the puppet API is send-only).
+The Anchor escrow program (deployed to devnet) + its TS client. The buyer deposits into a per-order
+PDA seeded by `(buyer, reference)`, the seller delivers, the buyer releases (or refunds after a
+deadline). The `reference` is the same Solana Pay key the order is bound to. See its `README.md`.
 
 ## Key Constraints
 
