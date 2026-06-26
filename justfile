@@ -12,7 +12,7 @@ default:
     @just --list
 
 # ── one-shot: wallets + build images + start coral & bridge ──────────────────
-dev: setup build up
+dev: setup build clean up
     @echo Agent economy is up: coral + bridge.
     @echo FUND the 2 printed wallets at https://faucet.solana.com - sign in with GitHub - before the agents can pay.
     @echo Opening http://localhost:3010 - click Run in the Autonomous tab. Give the agents ~20s on first run.
@@ -50,6 +50,10 @@ ui:
 # run the autonomous loop from the CLI (alternative to the UI button)
 auto:
     cd examples/agent-economy/autonomous && npm install --no-audit --no-fund && npm start
+
+# remove orphaned coral-spawned agent containers (also runs at the start of `just dev`)
+clean:
+    node scripts/clean.js
 
 # tail coral-server logs
 logs:

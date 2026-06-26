@@ -135,6 +135,26 @@ The `cfg`/`anchor-debug` warnings it prints are harmless.
 
 ---
 
+## Cleanup — orphaned agent containers
+
+CoralOS launches a fresh agent container (seller / buyer / user-proxy / broker) **per session** and
+doesn't reap them, so they pile up as you test — you'll see UUID-named containers in `docker ps`.
+They're harmless but accumulate. Prune them:
+
+```sh
+just clean          # or: node scripts/clean.js
+```
+
+`just dev` runs this automatically at startup, so a normal workflow stays tidy. `just clean` only
+removes containers built from the **agent images** (by ancestry) — it never touches coral, the bridge,
+or anything else. If `:5555`/`:3010` or the network ever act up after lots of testing, a full reset is:
+
+```sh
+docker compose down && just clean && docker compose up -d coral bridge
+```
+
+---
+
 ## Still stuck?
 
 Run `just doctor` and paste its output into an issue — it captures Node, Docker, wallet, and stack
