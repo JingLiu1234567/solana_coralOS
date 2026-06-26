@@ -1,16 +1,11 @@
-# seller-premium — the premium seller (swarm)
+# seller-premium
 
-A **higher-priced seller instance** used by the broker swarm. Like `seller-cheap`, it's a thin
-manifest (`coral-agent.toml`) that **reuses the `seller-agent:0.1.0` image** — only the price differs
-(default `PRICE_SOL = 0.0003`). Same protocol as `seller-agent`
-(`request → PAYMENT_REQUIRED → paid → DELIVERED`).
+A marketplace seller **persona** (not a separate codebase) — it reuses the `seller-agent:0.1.0` image
+and is shaped entirely by its `coral-agent.toml` options.
 
-It exists to give the broker a real choice: with two sellers at different prices, the broker's
-"shop and pick the cheapest" logic has something to compare. In the default demo it's the pricier
-option, so the broker buys from `seller-cheap` instead — swap the prices to flip the outcome.
+`seller-premium` is the **quality-first** bidder: a higher `FLOOR_SOL` (0.0005) and a persona prompt
+that bids up and justifies the price with quality rather than racing to the bottom. Inventory:
+`coingecko,inference`.
 
-## Options
-
-Same as `seller-agent` (`SELLER_WALLET`, `PRICE_SOL`, `SERVICE`, `SOLANA_RPC_URL`, the API keys).
-
-See `coral-agents/broker/README.md` and `docs/SWARM.md`.
+Against `seller-cheap` it gives the buyer a real best-value choice — the buyer's LLM weighs price vs.
+the bid's note. See [`docs/MARKETPLACE.md`](../../docs/MARKETPLACE.md).

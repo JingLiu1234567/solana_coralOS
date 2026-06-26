@@ -10,7 +10,7 @@ What it sets:
 |---|---|
 | `[auth]` | dev API key (`dev`) the agents/bridge use |
 | `[network]` | `allowAnyHost = true` for local dev |
-| `[registry]` | scans `localAgents = ["/agents/*"]` — this is how coral discovers `seller-agent`, `buyer-agent`, `broker`, `seller-cheap/premium`, `user-proxy`, `echo-agent` from the mounted `coral-agents/` folder |
+| `[registry]` | scans `localAgents = ["/agents/*"]` — this is how coral discovers `buyer-agent`, `seller-agent`, and the personas `seller-cheap`/`-premium`/`-lazy` from the mounted `coral-agents/` folder |
 | `[docker]` | how coral launches each agent as a container (`host.docker.internal`) |
 
 **Registering a new agent:** drop a folder in `coral-agents/` with a `coral-agent.toml` (it must
