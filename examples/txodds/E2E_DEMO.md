@@ -44,11 +44,11 @@ No new backend: the feed's **Start** button already runs `start.ts`, which is Wo
 
 ## Run it
 
-One command — mints a fresh token, rebuilds, brings up a clean coral (so `seller-worldcup`
+One command — `just dev` mints a fresh token, rebuilds, brings up a clean coral (so `seller-worldcup`
 registers), and opens the dashboard:
 
 ```sh
-just worldcup        # then click "Start a market" in the browser
+just dev             # then click "Start a market" in the browser
 ```
 
 Or step by step:

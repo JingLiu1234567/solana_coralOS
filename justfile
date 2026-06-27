@@ -11,18 +11,16 @@ set windows-shell := ["cmd.exe", "/c"]
 default:
     @just --list
 
-# ── one-shot: wallets + build images + coral + open the dashboard ───────────
-dev: setup build clean up
-    @echo Coral is up. FUND the 2 printed wallets at https://faucet.solana.com (GitHub sign-in).
-    @echo Opening the dashboard - click "Start a market" once the wallets are funded.
+# `down` first so coral re-scans /agents and registers seller-worldcup; the mint is fault-tolerant
+# (leading `-`) so the dashboard still opens for the generic market if TxLINE/funding is unavailable.
+# one-shot: fresh coral + build + a minted TxLINE token + the dashboard — the full World Cup demo
+dev: down setup build clean up
+    -cd examples/txodds && npm install --no-audit --no-fund && npm run mint
+    @echo Coral + the World Cup specialist are up. Opening the dashboard - click "Start a market".
+    @echo (Fund the 2 printed wallets with devnet SOL if needed: https://faucet.solana.com)
     node scripts/dashboard.js
 
-# ── one-shot World Cup demo: fresh coral + mint a TxLINE token + open the dashboard ──
-worldcup: down setup build clean mint up
-    @echo World Cup specialist is live. Opening the dashboard - click "Start a market".
-    node scripts/dashboard.js
-
-# mint a TxLINE free-tier token into .env (one-time; the token is short-lived, re-run before a demo)
+# mint a fresh TxLINE free-tier token into .env (short-lived; `just dev` already does this for you)
 mint:
     cd examples/txodds && npm install --no-audit --no-fund && npm run mint
 

@@ -90,7 +90,7 @@ async function main(): Promise<void> {
 
   console.error(`[mint] ✓ TXLINE_API_KEY + BUYER_SERVICE=txline + BUYER_ARG=${fx.FixtureId} written to .env`)
   console.error(`[mint]   fixture: ${fx.Participant1} v ${fx.Participant2} (${fx.Competition})`)
-  console.error('[mint]   next: `just worldcup`  (or: docker compose up -d coral && node scripts/dashboard.js → Start a market)')
+  console.error('[mint]   next: `just dev`  (or: docker compose up -d coral && node scripts/dashboard.js → Start a market)')
 }
 
 main().catch((e) => { console.error('[mint] failed:', (e as Error).message); process.exit(1) })
