@@ -87,6 +87,7 @@ async function main() {
     BUYER_MAX_SOL: f64(Number(env.BUYER_MAX_SOL ?? '0.001')),
     BUYER_SERVICE: str(env.BUYER_SERVICE ?? 'coingecko'),
     BUYER_ARG: str(env.BUYER_ARG ?? 'SOL-USDC'),
+    ...(env.BUYER_ARGS ? { BUYER_ARGS: str(env.BUYER_ARGS) } : {}),
     MARKET_SELLERS: str(sellers.join(',')),
     ...llmOpts,
   }

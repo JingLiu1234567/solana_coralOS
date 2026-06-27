@@ -27,7 +27,10 @@ import { makeProgram, deposit, release, escrowPda } from './escrow.js'
 const RPC = process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com'
 const BUDGET = Number(process.env.BUYER_MAX_SOL ?? '0.001')
 const SERVICE = process.env.BUYER_SERVICE ?? 'jupiter'
-const ARG = process.env.BUYER_ARG ?? 'SOL-USDC'
+// Rotate through several args so each round trades a *different* thing (BUYER_ARGS=csv of fixture ids,
+// else the single BUYER_ARG). This is what stops the market looking like the same round on a loop.
+const ARGS = (process.env.BUYER_ARGS || process.env.BUYER_ARG || 'SOL-USDC').split(',').map((s) => s.trim()).filter(Boolean)
+const ARG = ARGS[0]
 const BID_WINDOW_MS = Number(process.env.BID_WINDOW_MS ?? '5000')
 const CYCLE_MS = Number(process.env.CYCLE_INTERVAL_MS ?? '30000')
 const SELLERS = (process.env.MARKET_SELLERS ?? 'seller-cheap,seller-premium')
@@ -90,8 +93,9 @@ await startCoralAgent({ agentName: process.env.AGENT_NAME ?? 'buyer-agent' }, as
   while (true) {
     try {
       round++
-      if (trace) console.error(`[buyer] round ${round}: WANT ${SERVICE} ${ARG} budget=${BUDGET}`)
-      await ctx.send(formatWant({ round, service: SERVICE, arg: ARG, budgetSol: BUDGET }), thread, SELLERS)
+      const arg = ARGS[(round - 1) % ARGS.length] // rotate fixtures so consecutive rounds differ
+      if (trace) console.error(`[buyer] round ${round}: WANT ${SERVICE} ${arg} budget=${BUDGET}`)
+      await ctx.send(formatWant({ round, service: SERVICE, arg, budgetSol: BUDGET }), thread, SELLERS)
 
       // ── collect competing bids during the window ──────────────────────────
       const bids: Bid[] = []

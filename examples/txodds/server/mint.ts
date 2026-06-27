@@ -79,17 +79,34 @@ async function main(): Promise<void> {
   const fixtures = (await axios.get(`${BASE}/api/fixtures/snapshot`, {
     headers: { Authorization: `Bearer ${jwt}`, 'X-Api-Token': token },
   })).data as Array<{ FixtureId: number; Competition: string; Participant1: string; Participant2: string }>
-  const fx = (Array.isArray(fixtures) ? fixtures : []).find((f) => f.Competition === 'World Cup') ?? fixtures?.[0]
-  if (!fx) throw new Error('no fixtures returned — the free tier may be inactive')
+  const all = Array.isArray(fixtures) ? fixtures : []
+  const candidates = all.filter((f) => f.Competition === 'World Cup').length
+    ? all.filter((f) => f.Competition === 'World Cup')
+    : all
+  // Keep only fixtures that actually have a 1X2 odds market, so every demo round shows a full board.
+  const pick: typeof candidates = []
+  for (const f of candidates) {
+    if (pick.length >= 5) break
+    try {
+      const o = (await axios.get(`${BASE}/api/odds/snapshot/${f.FixtureId}`, {
+        headers: { Authorization: `Bearer ${jwt}`, 'X-Api-Token': token },
+      })).data
+      if (Array.isArray(o) && o.some((x: { SuperOddsType?: string }) => String(x.SuperOddsType ?? '').includes('1X2'))) pick.push(f)
+    } catch { /* skip fixtures without odds */ }
+  }
+  if (pick.length === 0) throw new Error('no fixtures with odds — the free tier may be inactive')
+  const ids = pick.map((f) => f.FixtureId).join(',')
 
   let env = fs.readFileSync(ENV_PATH, 'utf8')
   env = setKv(env, 'TXLINE_API_KEY', token)
   env = setKv(env, 'BUYER_SERVICE', 'txline')
-  env = setKv(env, 'BUYER_ARG', String(fx.FixtureId))
+  env = setKv(env, 'BUYER_ARG', String(pick[0].FixtureId))
+  env = setKv(env, 'BUYER_ARGS', ids)
   fs.writeFileSync(ENV_PATH, env)
 
-  console.error(`[mint] ✓ TXLINE_API_KEY + BUYER_SERVICE=txline + BUYER_ARG=${fx.FixtureId} written to .env`)
-  console.error(`[mint]   fixture: ${fx.Participant1} v ${fx.Participant2} (${fx.Competition})`)
+  console.error('[mint] ✓ TXLINE_API_KEY + BUYER_SERVICE=txline written to .env')
+  console.error(`[mint]   the market will rotate through ${pick.length} fixtures:`)
+  for (const f of pick) console.error(`[mint]     ${f.FixtureId}  ${f.Participant1} v ${f.Participant2}`)
   console.error('[mint]   next: `just dev`  (or: docker compose up -d coral && node scripts/dashboard.js → Start a market)')
 }
 

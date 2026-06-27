@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useFeed, startMarket } from './api'
 import { MarketView } from './components/MarketView'
+import { Explainer } from './components/Explainer'
 
 /** Read ?session=<id> from the URL so the launcher can deep-link straight to a live market. */
 const initialSession = new URLSearchParams(window.location.search).get('session') ?? ''
@@ -47,6 +48,8 @@ export default function App() {
         </button>
       </div>
       {startErr && <p className="start-err" data-testid="start-err">{startErr}</p>}
+
+      <Explainer />
 
       <main>
         {session ? <MarketView rounds={rounds} /> : (
