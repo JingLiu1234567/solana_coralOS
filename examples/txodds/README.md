@@ -70,20 +70,23 @@ token, so the runtime stays devnet-pure. Following TxODDS' [quickstart](https://
 
 From then on the agent fetches data with that token; payments are devnet SOL through the escrow.
 
-## Wire it into the seller
+## How it's wired into the seller
 
-Add one case to [`coral-agents/seller-agent/src/service.ts`](../../coral-agents/seller-agent/src/service.ts):
+The shipped seller **already** sells `txline`: `txline` is in `KNOWN_SERVICES` and `deliverService()`'s
+switch routes it to an inline `txlineService()` in
+[`coral-agents/seller-agent/src/service.ts`](../../coral-agents/seller-agent/src/service.ts) that calls
+TxLINE directly (its own `txlineGet`) and resolves team names + a deterministic fallback. So out of the
+box, a buyer that broadcasts `WANT service=txline ...` is routed to a seller, pays into the escrow, and
+receives the LLM-analysed World Cup edge on delivery — no wiring needed.
+
+`agent/service.ts` here (`deliverTxOdds`) is a **standalone, minimal reference** for the same thing,
+handy if you're forking. To use it instead of the seller's inline version, swap that one case:
 
 ```ts
 import { deliverTxOdds } from '../../../examples/txodds/agent/service.js'
-
-const KNOWN_SERVICES = new Set([...,'txline'])
-// inside deliverService()'s switch:
+// inside deliverService()'s switch (txline is already in KNOWN_SERVICES):
 case 'txline': return deliverTxOdds(payload)
 ```
-
-Now a buyer that broadcasts `WANT service=txline-edge ...` gets routed to this agent, pays into the
-escrow, and receives the LLM-analysed World Cup edge on delivery.
 
 ## Run the e2e app (live data)
 

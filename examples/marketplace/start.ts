@@ -80,14 +80,27 @@ async function main() {
     : []
 
   const sellers = ['seller-cheap', 'seller-premium', 'seller-lazy', ...(txlineKey ? ['seller-worldcup'] : [])]
+
+  // F8: a txline market needs both the World Cup token AND the worldcup seller. If .env still says
+  // BUYER_SERVICE=txline but no token is present (e.g. a stale .env after a failed mint), fall back to
+  // the generic market rather than broadcasting txline WANTs nothing can fill.
+  const wantsTxline = (env.BUYER_SERVICE ?? 'coingecko') === 'txline'
+  const fellBack = wantsTxline && !txlineKey
+  if (fellBack) console.warn('[marketplace] BUYER_SERVICE=txline but no TXLINE_API_KEY — falling back to coingecko.')
+  const buyerService = fellBack ? 'coingecko' : (env.BUYER_SERVICE ?? 'coingecko')
+  const buyerArg = fellBack ? 'SOL-USDC' : (env.BUYER_ARG ?? 'SOL-USDC')
+  const buyerArgs = fellBack ? '' : (env.BUYER_ARGS ?? '')
+
   const buyerOpts: Record<string, unknown> = {
     BUYER_KEYPAIR_B58: str(keypair),
     AGENT_NAME: str('buyer-agent'),
     SOLANA_RPC_URL: str(rpc),
+    // F3: the expected seller payout wallet (personas share one) — the buyer binds the escrow seller= to it.
+    SELLER_WALLET: str(wallet),
     BUYER_MAX_SOL: f64(Number(env.BUYER_MAX_SOL ?? '0.001')),
-    BUYER_SERVICE: str(env.BUYER_SERVICE ?? 'coingecko'),
-    BUYER_ARG: str(env.BUYER_ARG ?? 'SOL-USDC'),
-    ...(env.BUYER_ARGS ? { BUYER_ARGS: str(env.BUYER_ARGS) } : {}),
+    BUYER_SERVICE: str(buyerService),
+    BUYER_ARG: str(buyerArg),
+    ...(buyerArgs ? { BUYER_ARGS: str(buyerArgs) } : {}),
     MARKET_SELLERS: str(sellers.join(',')),
     ...llmOpts,
   }

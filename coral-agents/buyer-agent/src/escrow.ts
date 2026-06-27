@@ -13,7 +13,8 @@
 // the whole module.exports, so every member resolves. (esModuleInterop makes this typecheck.)
 import anchor from '@coral-xyz/anchor'
 import type { Program } from '@coral-xyz/anchor'
-import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { solanaConnection } from '@pay/agent-runtime'
 const { AnchorProvider, BN } = anchor
 
 export const PROGRAM_ID = new PublicKey('R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet')
@@ -27,8 +28,10 @@ export function escrowPda(buyer: PublicKey, reference: PublicKey): PublicKey {
 
 /** Program handle signed by the buyer (deposits/releases/refunds). */
 export async function makeProgram(buyer: Keypair, rpcUrl: string): Promise<Program> {
+  // solanaConnection() applies the devnet guard (throws on a mainnet RPC unless ALLOW_MAINNET=1) —
+  // escrow is the real settlement path, so it must be guarded just like the legacy transfer path.
   const provider = new AnchorProvider(
-    new Connection(rpcUrl, 'confirmed'),
+    solanaConnection(rpcUrl),
     new anchor.Wallet(buyer),
     { commitment: 'confirmed' },
   )

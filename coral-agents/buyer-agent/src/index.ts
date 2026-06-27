@@ -23,10 +23,11 @@ import {
 } from '@pay/agent-runtime'
 import { PublicKey } from '@solana/web3.js'
 import { makeProgram, deposit, release, escrowPda } from './escrow.js'
+import { payoutMatches } from './guard.js'
 
 const RPC = process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com'
 const BUDGET = Number(process.env.BUYER_MAX_SOL ?? '0.001')
-const SERVICE = process.env.BUYER_SERVICE ?? 'jupiter'
+const SERVICE = process.env.BUYER_SERVICE ?? 'coingecko' // canonical default (matches coral-agent.toml + start.ts)
 // Rotate through several args so each round trades a *different* thing (BUYER_ARGS=csv of fixture ids,
 // else the single BUYER_ARG). This is what stops the market looking like the same round on a loop.
 const ARGS = (process.env.BUYER_ARGS || process.env.BUYER_ARG || 'SOL-USDC').split(',').map((s) => s.trim()).filter(Boolean)
@@ -35,6 +36,9 @@ const BID_WINDOW_MS = Number(process.env.BID_WINDOW_MS ?? '5000')
 const CYCLE_MS = Number(process.env.CYCLE_INTERVAL_MS ?? '30000')
 const SELLERS = (process.env.MARKET_SELLERS ?? 'seller-cheap,seller-premium')
   .split(',').map((s) => s.trim()).filter(Boolean)
+// F3: the payout wallet the buyer expects (personas share one in the demo). If set, the buyer refuses
+// to deposit to an ESCROW_REQUIRED whose seller= pubkey differs — binding the award to the payout.
+const EXPECTED_SELLER_WALLET = process.env.SELLER_WALLET ?? ''
 const trace = process.env.TRACE === '1'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -116,6 +120,10 @@ await startCoralAgent({ agentName: process.env.AGENT_NAME ?? 'buyer-agent' }, as
       // ── settle through escrow: deposit → DEPOSITED → wait DELIVERED → release
       const terms = await waitFor<EscrowTerms>(ctx, round, parseEscrowRequired, 15_000)
       if (!terms) { console.error(`[buyer] round ${round}: no escrow terms from ${winner.by}`); await sleep(CYCLE_MS); continue }
+      if (!payoutMatches(terms.seller, EXPECTED_SELLER_WALLET)) {
+        console.error(`[buyer] round ${round}: escrow payout ${terms.seller} ≠ expected ${EXPECTED_SELLER_WALLET} — skipping`)
+        await sleep(CYCLE_MS); continue
+      }
 
       const reference = new PublicKey(terms.reference)
       const seller = new PublicKey(terms.seller)

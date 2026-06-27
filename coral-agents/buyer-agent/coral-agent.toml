@@ -14,6 +14,7 @@ expression = "MIT"
 [options]
 BUYER_KEYPAIR_B58 = { type = "string", description = "Base58-encoded devnet keypair — signs deposit/release" }
 AGENT_NAME = { type = "string", default = "buyer-agent", description = "Market identity (matches the registry name)" }
+SELLER_WALLET = { type = "string", default = "", description = "Expected seller payout wallet — the buyer binds the escrow seller= to it before depositing (F3)" }
 BUYER_MAX_SOL = { type = "f64", default = 0.001, description = "Budget cap per round (the WANT budget)" }
 BUYER_SERVICE = { type = "string", default = "coingecko", description = "Service to shop for (sellers self-select on it)" }
 BUYER_ARG = { type = "string", default = "SOL-USDC", description = "Argument passed to the winning seller's deliverService" }

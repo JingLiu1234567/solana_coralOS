@@ -22,6 +22,7 @@ import {
 } from '@solana/spl-token'
 import nacl from 'tweetnacl'
 import bs58 from 'bs58'
+import { assertDevnet } from '@pay/agent-runtime'
 
 const PROGRAM = new PublicKey('6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J')
 const MINT = new PublicKey('4Zao8ocPhmMgq7PdsYWyxvqySMGx7xb9cMftPMkEokRG') // real treasury mint
@@ -44,6 +45,7 @@ let apiToken = ''
 async function ensureToken(): Promise<void> {
   if (apiToken) return
   const keypair = buyerKeypair()
+  assertDevnet(RPC) // devnet-only: refuse a mainnet RPC unless ALLOW_MAINNET=1
   const connection = new Connection(RPC, 'confirmed')
   const provider = new anchor.AnchorProvider(connection, new anchor.Wallet(keypair), { commitment: 'confirmed' })
   const idl = (await anchor.Program.fetchIdl(PROGRAM, provider)) as anchor.Idl

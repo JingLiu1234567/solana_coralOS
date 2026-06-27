@@ -7,8 +7,8 @@
  *   WANT   round=<n> service=<name> arg=<token> budget=<sol>     buyer  → market, @sellers
  *   BID    round=<n> price=<sol> by=<seller> [note=<free text>]  seller → market (self-selects)
  *   AWARD  round=<n> to=<seller>                                 buyer  → market, @winner
- *   ESCROW_REQUIRED round=<n> reference=<R> amount=<sol> deadline=<secs>   seller → buyer
- *   DEPOSITED round=<n> reference=<R> pda=<addr> sig=<sig>       buyer  → seller
+ *   ESCROW_REQUIRED round=<n> reference=<R> seller=<addr> amount=<sol> deadline=<secs>  seller → buyer
+ *   DEPOSITED round=<n> reference=<R> buyer=<addr> sig=<sig>     buyer  → seller
  *   (then DELIVERED / RELEASED / REFUNDED reuse the round tag)
  */
 

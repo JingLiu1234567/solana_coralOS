@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { guardPayment, type PurchaseGuard } from './guard.js'
+import { guardPayment, payoutMatches, type PurchaseGuard } from './guard.js'
 import { parse402 } from './llm_buyer.js'
 import { payFromUrl } from './wallet.js'
 
@@ -37,6 +37,20 @@ describe('guardPayment — code-enforced trust (not prompt-enforced)', () => {
     const r = guardPayment(g, { recipient: RECIP, amountSol: 0.001 }, 1_000_000) // 0.001 SOL would push over
     expect(r.allowed).toBe(false)
     if (!r.allowed) expect(r.reason).toMatch(/budget/i)
+  })
+})
+
+describe('payoutMatches — bind the awarded seller to the escrow payout (F3)', () => {
+  it('rejects an escrow seller that differs from the expected wallet', () => {
+    expect(payoutMatches('AttackerWa11et', RECIP)).toBe(false)
+  })
+
+  it('accepts a matching payout wallet', () => {
+    expect(payoutMatches(RECIP, RECIP)).toBe(true)
+  })
+
+  it('is a no-op when no expected wallet is configured (shared-wallet demo default)', () => {
+    expect(payoutMatches('anything', '')).toBe(true)
   })
 })
 

@@ -12,7 +12,8 @@
 // import misses members the cjs lexer doesn't detect). esModuleInterop makes this typecheck.
 import anchor from '@coral-xyz/anchor'
 import type { Program } from '@coral-xyz/anchor'
-import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { solanaConnection } from '@pay/agent-runtime'
 const { AnchorProvider } = anchor
 
 export const PROGRAM_ID = new PublicKey('R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet')
@@ -27,8 +28,9 @@ export function escrowPda(buyer: PublicKey, reference: PublicKey): PublicKey {
 
 /** Read-only Program handle (a throwaway wallet — the seller never signs). */
 export async function makeProgram(rpcUrl: string): Promise<Program> {
+  // solanaConnection() applies the devnet guard (throws on a mainnet RPC unless ALLOW_MAINNET=1).
   const provider = new AnchorProvider(
-    new Connection(rpcUrl, 'confirmed'),
+    solanaConnection(rpcUrl),
     new anchor.Wallet(Keypair.generate()),
     { commitment: 'confirmed' },
   )

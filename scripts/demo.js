@@ -9,6 +9,7 @@
 // is unavailable, the dashboard still opens for the generic market.
 
 import { spawnSync, spawn } from 'node:child_process'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -49,6 +50,19 @@ const minted = run('npm', ['install', '--no-audit', '--no-fund'], tx) && run('np
 if (!minted) {
   console.warn('\n[demo] TxLINE mint skipped/failed — the dashboard will open for the generic market.')
   console.warn('[demo] (needs a funded devnet buyer wallet + TxLINE reachable; see examples/txodds.)')
+  // Strip any stale txline keys a previous successful mint left in .env, so the fallback is a CLEAN
+  // generic market: no expired TXLINE_API_KEY (→ no seller-worldcup launched), and BUYER_SERVICE
+  // reverts to start.ts's default instead of broadcasting txline WANTs no one can fill. (F8)
+  const envPath = join(root, '.env')
+  if (existsSync(envPath)) {
+    const stale = ['TXLINE_API_KEY', 'BUYER_SERVICE', 'BUYER_ARG', 'BUYER_ARGS']
+    const cleaned = readFileSync(envPath, 'utf8')
+      .split('\n')
+      .filter((line) => !stale.some((k) => line.startsWith(`${k}=`)))
+      .join('\n')
+    writeFileSync(envPath, cleaned)
+    console.warn('[demo] cleared stale txline keys from .env → clean generic market.')
+  }
 }
 
 // 7. Open the dashboard (feed + Vite UI + browser). Blocks here until you stop it (Ctrl+C).

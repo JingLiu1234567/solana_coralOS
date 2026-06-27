@@ -9,33 +9,46 @@ seller agents compete for a buyer's business over **CoralOS** (MCP), and the win
 **trustlessly through a Solana escrow contract** (deposit → deliver → release / refund after a
 deadline). The stack is pure TypeScript end-to-end; the **only Rust is the escrow Anchor program**,
 which is the **settlement spine** (not optional). A forkable, e2e-tested React dashboard renders the
-live market. The headline (and only) example is `examples/marketplace/`.
+live market. The fastest way to see it: `npm run dev` (no `just`/`bash` needed) brings up coral,
+builds the agents, and opens the dashboard.
+
+There are two examples: `examples/marketplace/` (the generic market — buyer + LLM seller personas)
+and `examples/txodds/` (a TxODDS World Cup oracle — the default demo `npm run dev` wires up).
 
 ## Repo Layout
 
 | Directory | Purpose |
 |-----------|---------|
-| `examples/marketplace/` | **The track.** `start.ts` launches the market session (buyer + 3 LLM seller personas). |
+| `examples/marketplace/` | The generic market. `start.ts` launches the session (buyer + LLM seller personas); `feed/` + `web/` are the e2e-tested React dashboard. |
+| `examples/txodds/` | The TxODDS World Cup oracle demo (what `npm run dev` opens): `agent/` (a standalone `deliverTxOdds` reference + `TxLineClient`), `server/` (`mint.ts`, `proxy.ts` — the on-chain subscribe), `web/`. |
 | `examples/agent-economy/` | `config/coral.toml` (wallet-free MCP config) + `escrow/` (the Anchor escrow contract — the settlement spine). |
-| `coral-agents/` | Agents coral-server launches: `seller-agent` (LLM bidder + `service.ts` fork point), `buyer-agent` (market loop), and the config-only personas `seller-cheap`/`-premium`/`-lazy`. |
+| `coral-agents/` | Agents coral-server launches: `seller-agent` (LLM bidder + `service.ts` fork point), `buyer-agent` (market loop), and the config-only personas `seller-cheap`/`-premium`/`-lazy`/`-worldcup`. |
 | `packages/agent-runtime/` | The three pillars, one folder each under `src/`: CoralOS MCP client (`coral/`), Solana Pay + devnet guard (`solana/`), the LLM provider shim (`llm/`), and the market protocol (`market/`). Root `src/index.ts` re-exports all of them. |
-| `scripts/` | `setup.js` (wallet generation), `doctor.js` (health check). |
+| `scripts/` | `demo.js` (the `npm run dev` one-command demo), `setup.js` (wallet generation), `dashboard.js` (feed + Vite UI + browser), `clean.js` (prune orphaned containers), `doctor.js` (health check). |
 | `docs/`, `.claude/` | Design docs — `MARKETPLACE.md`, `APIS.md`, `PRODUCTION_HARDENING.md`, `SECURITY_REVIEW.md`. |
 
-The headline (and only) example is `examples/marketplace/` on stock coral-server. CoralOS is the MCP
-coordination layer only — settlement is the Solana escrow contract, agent-side (no coral-server wallet).
+Everything runs on stock coral-server. CoralOS is the MCP coordination layer only — settlement is the
+Solana escrow contract, agent-side (no coral-server wallet).
 
 ## Commands
 
-### Run the marketplace (requires Docker)
+### Run the demo (requires Docker)
+
+```sh
+npm run dev                                            # = node scripts/demo.js — the one-command demo
+# fresh coral → wallets → build images → clean → coral up → mint TxLINE → open the dashboard,
+# then click "Start a market". `just dev` runs the same chain if you have `just`.
+# set LLM_PROVIDER=openai (+ OPENAI_API_KEY) in .env to flip the whole market to OpenAI
+```
+
+By hand (what `npm run dev` automates), e.g. to watch the raw agent transcript:
 
 ```sh
 node scripts/setup.js                                  # generate + fund devnet wallets → .env
 bash build-agents.sh                                   # build seller + buyer images (personas reuse seller)
 docker compose up -d coral                             # coral-server (MCP coordinator)
-cd examples/marketplace && npm install && npm start    # launch the market session
+cd examples/marketplace && npm install && npm start    # launch the generic market session
 docker logs -f buyer-agent                             # WANT → AWARD → DEPOSITED → RELEASED
-# set LLM_PROVIDER=openai (+ OPENAI_API_KEY) in .env to flip the whole market to OpenAI
 ```
 
 ### packages/agent-runtime (agent runtime)
@@ -80,6 +93,8 @@ Each pillar folder has its own `index.ts` barrel; the package root `src/index.ts
   fallback), `deposit` into escrow, `release` on delivery / `refund` after the deadline (`escrow.ts`).
 - `seller-cheap` / `seller-premium` / `seller-lazy` — config-only personas over the seller image
   (different `PERSONA`/`FLOOR_SOL`/`SERVICES`); `seller-lazy` self-selects out of non-inventory jobs.
+- `seller-worldcup` — a `txline`-only specialist persona (also reusing the seller image). It wins
+  World Cup rounds because the generalists decline the `txline` service; it delivers an LLM value call.
 
 ### examples/agent-economy/escrow — the settlement spine
 
@@ -89,7 +104,7 @@ deadline). The `reference` is the same Solana Pay key the order is bound to. See
 
 ## Key Constraints
 
-- **The CoralOS run loop should respect its `AbortSignal`** — `CoralMcpAgent.runLoop(handler, signal)` checks `signal.aborted`; `startCoralAgent` wires SIGINT/SIGTERM to a clean disconnect.
+- **Clean shutdown is signal-driven** — `startCoralAgent` registers `SIGINT`/`SIGTERM` handlers that `disconnect()` then `process.exit(0)`. The agents run a manual `while (true)` loop over `ctx.waitForMention()` (not `CoralMcpAgent.runLoop`), so the loop is interrupted by that signal handler. `runLoop(handler, signal)` is an optional convenience that checks `signal.aborted`, but the shipped agents don't use it.
 - **coral-server launches agents via the Docker socket** — build the agent images before `docker compose up`.
 - **Devnet only** — agent payment code builds its `Connection` via `solanaConnection()` (`@pay/agent-runtime`), which throws on a mainnet RPC unless `ALLOW_MAINNET=1`; it defaults to `https://api.devnet.solana.com`. Never put a funded mainnet keypair in `.env`.
 - **The `coral-agents` / `examples` packages depend on `@pay/agent-runtime` via `file:` deps** — run `npm run build` in `packages/agent-runtime` first so the dist exists.

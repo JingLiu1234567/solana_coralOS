@@ -42,9 +42,14 @@ These ship in `deliverService()` now — fork-ready examples to copy:
 ## Where the key goes
 
 1. Put the value in `.env` (copy [`.env.example`](../.env.example)).
-2. [`docker-compose.yml`](../docker-compose.yml) forwards it to the seller — it already passes
-   `HELIUS_API_KEY`, `JUPITER_API_KEY`, `NEWS_API_KEY`, `ANTHROPIC_API_KEY`. Add a new line there for a
-   new key (e.g. `TXLINE_API_KEY`).
+2. Get it to the seller. There are **two delivery paths**, depending on how you launch:
+   - **Marketplace (`npm run dev` / `npm start`):** [`examples/marketplace/start.ts`](../examples/marketplace/start.ts)
+     reads `.env` and passes options **per-agent in the session request** (this is how `TXLINE_API_KEY`
+     reaches `seller-worldcup`). Add your key there if a persona needs it — `docker-compose.yml` is **not**
+     on this path.
+   - **By-hand (`docker compose up`):** [`docker-compose.yml`](../docker-compose.yml) forwards env to the
+     agents coral launches — it passes `HELIUS_API_KEY`, `JUPITER_API_KEY`, `NEWS_API_KEY`,
+     `ANTHROPIC_API_KEY`, and `TXLINE_API_KEY`. Add a new line there for a new key.
 3. The service reads it with `process.env.NAME`.
 
 Keyless services (`coingecko`, Public RPC, Pyth) need none of this.

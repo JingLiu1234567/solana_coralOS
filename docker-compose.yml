@@ -35,6 +35,11 @@ services:
       - HELIUS_API_KEY=${HELIUS_API_KEY}
       - JUPITER_API_KEY=${JUPITER_API_KEY}
       - NEWS_API_KEY=${NEWS_API_KEY}
+      # TxODDS World Cup oracle (the `txline` service). Note: the marketplace's start.ts delivers these
+      # per-agent via the session request; this line only matters for the by-hand `docker compose` path.
+      - TXLINE_API_KEY=${TXLINE_API_KEY}
+      - TXLINE_BASE_URL=${TXLINE_BASE_URL:-}
+      - INFERENCE_MODEL=${INFERENCE_MODEL:-}
       # Set TRACE=1 to log coral_* calls + on-chain Explorer links in the agents.
       - TRACE=${TRACE:-}
     volumes:

@@ -1,12 +1,11 @@
 /**
- * TxODDS service — a drop-in `deliverService()` for the seller agent.
+ * TxODDS service — a self-contained reference for selling verified TxLINE World Cup data for SOL.
  *
- * This is the fork point: it turns verified TxLINE World Cup data into the *good* an agent sells for
- * devnet SOL. Wire it into the seller by adding a `txline` case in
- * `coral-agents/seller-agent/src/service.ts`:
- *
- *     import { deliverTxOdds } from '../../examples/txodds/agent/service.js'
- *     case 'txline': return deliverTxOdds(payload)
+ * Note: the shipped seller already integrates `txline` *inline* — see `txlineService()` in
+ * `coral-agents/seller-agent/src/service.ts`, which calls TxLINE directly (its own `txlineGet`) and
+ * adds team names + a deterministic fallback. This module is the standalone, minimal version of the
+ * same idea (used by nothing else in the kit); read it to understand the shape, then either fork the
+ * seller's inline `txlineService` or wire this in as `case 'txline': return deliverTxOdds(payload)`.
  *
  * Request grammar (the buyer's request string after the `txline` keyword):
  *   "fixtures"          -> upcoming World Cup / Int Friendlies fixtures              (data only)

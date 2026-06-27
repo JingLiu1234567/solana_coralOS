@@ -41,3 +41,13 @@ export function guardPayment(guard: PurchaseGuard, input: PaymentInput, budgetLa
   }
   return { allowed: true, lamports }
 }
+
+/**
+ * F3: bind the awarded seller to the escrow payout pubkey. The buyer should only deposit if the
+ * `seller=` carried in `ESCROW_REQUIRED` matches the wallet it expects for the winner — otherwise a
+ * thread participant could redirect the payout. With an empty `expected` (no seller wallet configured)
+ * this is a no-op, which is the demo default since the personas share one receive wallet.
+ */
+export function payoutMatches(escrowSeller: string, expected: string): boolean {
+  return !expected || escrowSeller === expected
+}
