@@ -32,6 +32,12 @@ pnpm-lock.yaml
 bun.lock
 bun.lockb
 
+# Claude Code / AI tool metadata
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
+
 # Misc
 *.log
 coverage*.json

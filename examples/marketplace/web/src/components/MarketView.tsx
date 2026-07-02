@@ -4,7 +4,7 @@ import { RoundCard } from './RoundCard'
 /** The live market feed — newest round first. */
 export function MarketView({ rounds }: { rounds: Round[] }) {
   if (rounds.length === 0) {
-    return <p className="empty" data-testid="empty">Waiting for the buyer to broadcast a WANT…</p>
+    return <p className="empty" data-testid="empty">Waiting for the public authority to publish a tender…</p>
   }
   const newestFirst = [...rounds].sort((a, b) => b.round - a.round)
   return (

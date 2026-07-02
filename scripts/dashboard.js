@@ -25,7 +25,14 @@ for (const dir of [feedDir, webDir]) {
   }
 }
 
-const feed = spawn('npm', ['start'], { cwd: feedDir, shell: true, stdio: 'inherit' })
+// Auto-clean stale agent containers before starting so old sessions don't interfere.
+console.log('[dashboard] cleaning stale agent containers…')
+spawnSync('node', ['scripts/clean.js'], { cwd: root, shell: true, stdio: 'inherit' })
+
+const feed = spawn('npm', ['start'], {
+  cwd: feedDir, shell: true, stdio: 'inherit',
+  env: { ...process.env, MARKET_SELLERS: 'insight-research,stratford-advisory,whitehall-analytics' },
+})
 const web = spawn('npm', ['run', 'dev'], { cwd: webDir, shell: true, stdio: 'inherit' })
 
 setTimeout(() => {

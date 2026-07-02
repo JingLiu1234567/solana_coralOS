@@ -6,7 +6,9 @@
 //
 // Default: Jupiter DEX swap quote (SOL → USDC) — no API key needed
 
-const KNOWN_SERVICES = new Set(['jupiter', 'coingecko', 'news', 'inference', 'claude', 'txline'])
+import { complete } from '@pay/agent-runtime'
+
+const KNOWN_SERVICES = new Set(['jupiter', 'coingecko', 'news', 'inference', 'claude', 'txline', 'govreport'])
 
 export async function deliverService(request: string): Promise<string> {
   // The request may NAME a service as its first token — that's how the human checkout's
@@ -20,6 +22,8 @@ export async function deliverService(request: string): Promise<string> {
   const payload = named ? rest.join(' ') : request
 
   switch (service) {
+    case 'govreport':
+      return govReportService(payload)
     case 'jupiter':
       return jupiterSwapQuote(payload)
     case 'coingecko':
@@ -32,8 +36,51 @@ export async function deliverService(request: string): Promise<string> {
     case 'txline':
       return txlineService(payload)
     default:
-      return jupiterSwapQuote(payload)
+      return govReportService(payload)
   }
+}
+
+// Government procurement — industry analysis report service.
+// The buyer (government agency) broadcasts a procurement need; each consulting firm agent
+// generates a proposal + report using the LLM. The winning bidder delivers the full report.
+async function govReportService(request: string): Promise<string> {
+  const topic = request.trim() || 'general industry analysis'
+  const agentName = process.env.AGENT_NAME ?? 'consulting-firm'
+
+  let report: string
+  try {
+    report = await complete({
+      system: `You are a senior analyst at ${agentName}, a professional consulting firm.
+You produce concise, structured industry analysis reports for government procurement clients.
+Always respond with valid JSON only — no markdown, no prose outside the JSON.`,
+      user: `Produce a government industry analysis report on: "${topic}"
+
+Return JSON with exactly these fields:
+{
+  "executive_summary": "2-3 sentence overview",
+  "market_size": "estimated market size and growth rate",
+  "key_findings": ["finding 1", "finding 2", "finding 3"],
+  "key_players": ["player 1", "player 2", "player 3"],
+  "risks": ["risk 1", "risk 2"],
+  "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"]
+}`,
+      maxTokens: 800,
+    })
+  } catch (e) {
+    return JSON.stringify({ error: `LLM unavailable: ${(e as Error).message}` })
+  }
+
+  // Parse and re-wrap with metadata
+  let parsed: unknown
+  try { parsed = JSON.parse(report) } catch { parsed = { raw: report } }
+
+  return JSON.stringify({
+    service: 'govreport',
+    analyst: agentName,
+    topic,
+    report: parsed,
+    timestamp: new Date().toISOString(),
+  })
 }
 
 // Claude inference — resell LLM completions for SOL. This is the on-thesis

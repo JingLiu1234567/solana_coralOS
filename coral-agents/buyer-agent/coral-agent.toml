@@ -22,9 +22,11 @@ BUYER_ARGS = { type = "string", default = "", description = "Comma-separated arg
 MARKET_SELLERS = { type = "string", default = "seller-cheap,seller-premium,seller-lazy", description = "Comma-separated seller names in the market thread" }
 BID_WINDOW_MS = { type = "f64", default = 5000, description = "How long to collect competing bids each round" }
 CYCLE_INTERVAL_MS = { type = "f64", default = 30000, description = "Delay between market rounds" }
+MAX_ROUNDS = { type = "f64", default = 0, description = "Stop after this many rounds (0 = unlimited)" }
 SOLANA_RPC_URL = { type = "string", default = "", description = "Solana RPC URL (devnet)" }
 ANTHROPIC_API_KEY = { type = "string", default = "", description = "Anthropic key (default brain for best-value selection)" }
 OPENAI_API_KEY = { type = "string", default = "", description = "OpenAI key — set with LLM_PROVIDER=openai to flip the brain" }
+OPENAI_BASE_URL = { type = "string", default = "", description = "Custom OpenAI-compatible base URL (e.g. OpenRouter)" }
 LLM_PROVIDER = { type = "string", default = "", description = "anthropic (default) | openai" }
 LLM_MODEL = { type = "string", default = "", description = "Override the LLM model id" }
 TRACE = { type = "string", default = "", description = "Set to 1 to log CoralOS calls + on-chain steps (Explorer links)" }

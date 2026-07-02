@@ -13,8 +13,10 @@
 // the whole module.exports, so every member resolves. (esModuleInterop makes this typecheck.)
 import anchor from '@coral-xyz/anchor'
 import type { Program } from '@coral-xyz/anchor'
-import { Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { Keypair, PublicKey, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js'
 import { solanaConnection } from '@pay/agent-runtime'
+
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr')
 const { AnchorProvider, BN } = anchor
 
 export const PROGRAM_ID = new PublicKey('R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet')
@@ -49,11 +51,20 @@ export async function deposit(
   reference: PublicKey,
   amountSol: number,
   deadlineSecs: number,
+  memo?: string,
 ): Promise<string> {
   const deadline = new BN(Math.floor(Date.now() / 1000) + deadlineSecs)
+  const preInstructions = memo ? [
+    new TransactionInstruction({
+      keys: [{ pubkey: buyer.publicKey, isSigner: true, isWritable: false }],
+      programId: MEMO_PROGRAM_ID,
+      data: Buffer.from(memo.slice(0, 512), 'utf8'),
+    }),
+  ] : []
   return (program.methods as any)
     .initialize(new BN(Math.round(amountSol * LAMPORTS_PER_SOL)), reference, deadline)
     .accounts({ buyer: buyer.publicKey, seller, escrow: escrowPda(buyer.publicKey, reference) })
+    .preInstructions(preInstructions)
     .signers([buyer])
     .rpc()
 }
@@ -68,6 +79,33 @@ export async function release(
   return (program.methods as any)
     .release()
     .accounts({ buyer: buyer.publicKey, seller, escrow: escrowPda(buyer.publicKey, reference) })
+    .signers([buyer])
+    .rpc()
+}
+
+/**
+ * Release with an on-chain SPL Memo recording the full settlement audit trail:
+ * winner, delivery score, AC checks, proposal hashes, and report hash.
+ * Anchors the evaluation outcome permanently to this transaction.
+ */
+export async function releaseWithMemo(
+  program: Program,
+  buyer: Keypair,
+  seller: PublicKey,
+  reference: PublicKey,
+  memo: string,
+): Promise<string> {
+  const preInstructions = [
+    new TransactionInstruction({
+      keys: [{ pubkey: buyer.publicKey, isSigner: true, isWritable: false }],
+      programId: MEMO_PROGRAM_ID,
+      data: Buffer.from(memo.slice(0, 512), 'utf8'),
+    }),
+  ]
+  return (program.methods as any)
+    .release()
+    .accounts({ buyer: buyer.publicKey, seller, escrow: escrowPda(buyer.publicKey, reference) })
+    .preInstructions(preInstructions)
     .signers([buyer])
     .rpc()
 }

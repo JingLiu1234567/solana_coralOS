@@ -5,7 +5,8 @@
  * (`@pay/agent-runtime`) — the market wire protocol has one source of truth.
  */
 import {
-  verb, messageRound, parseWant, parseBid, parseAward, parseEscrowRequired, parseDeposited,
+  verb, messageRound, parseWant, parseBid, parseProposal, parseAward, parseEscrowRequired, parseDeposited,
+  type ProposalContent,
 } from '@pay/agent-runtime'
 
 export interface RawMessage {
@@ -17,13 +18,14 @@ export interface RoundBid {
   by: string
   priceSol: number
   note?: string
+  proposal?: ProposalContent
 }
 
 export type RoundStatus = 'bidding' | 'awarded' | 'deposited' | 'delivered' | 'settled' | 'refunded'
 
 export interface Round {
   round: number
-  want?: { service: string; arg: string; budgetSol: number }
+  want?: { service: string; arg: string; brief?: string; budgetSol: number }
   bids: RoundBid[]
   /** Sellers that were in the market but didn't bid (self-selected out) — needs the seller roster. */
   declined: string[]
@@ -31,7 +33,8 @@ export interface Round {
   escrow?: { reference: string; seller: string; amountSol: number; deadlineSecs: number }
   deposit?: { sig: string; buyer: string }
   delivered?: { raw: string; data?: unknown }
-  release?: { sig: string }
+  release?: { sig: string; score?: number }
+  qualityFailed?: { score: number; reason: string }
   refunded?: boolean
   status: RoundStatus
 }
@@ -62,12 +65,23 @@ export function foldRounds(messages: RawMessage[], sellers: string[] = []): Roun
     const text = m.text.trim()
 
     const want = parseWant(text)
-    if (want) { get(want.round).want = { service: want.service, arg: want.arg, budgetSol: want.budgetSol }; continue }
+    if (want) { get(want.round).want = { service: want.service, arg: want.arg, brief: want.brief, budgetSol: want.budgetSol }; continue }
+
+    const proposal = parseProposal(text)
+    if (proposal) {
+      const r = get(proposal.round)
+      const existing = r.bids.find((b) => b.by === proposal.by)
+      if (existing) existing.proposal = proposal.content
+      else r.bids.push({ by: proposal.by, priceSol: 0, proposal: proposal.content })
+      continue
+    }
 
     const bid = parseBid(text)
     if (bid) {
       const r = get(bid.round)
-      if (!r.bids.some((b) => b.by === bid.by)) r.bids.push({ by: bid.by, priceSol: bid.priceSol, note: bid.note })
+      const existing = r.bids.find((b) => b.by === bid.by)
+      if (existing) { existing.priceSol = bid.priceSol; if (bid.note) existing.note = bid.note }
+      else r.bids.push({ by: bid.by, priceSol: bid.priceSol, note: bid.note })
       continue
     }
 
@@ -90,8 +104,14 @@ export function foldRounds(messages: RawMessage[], sellers: string[] = []): Roun
     } else if (v === 'RELEASED' && r != null) {
       const round = get(r)
       const sig = text.match(/sig=(\S+)/)?.[1]
-      if (sig) round.release = { sig }
+      const scoreMatch = text.match(/score=(\d+)/)
+      if (sig) round.release = { sig, score: scoreMatch ? Number(scoreMatch[1]) : undefined }
       round.status = 'settled'
+    } else if (v === 'QUALITY_FAILED' && r != null) {
+      const round = get(r)
+      const score = Number(text.match(/score=(\d+)/)?.[1] ?? '0')
+      const reason = text.match(/reason="([^"]*)"/)?.[1] ?? 'quality check failed'
+      round.qualityFailed = { score, reason }
     } else if (v === 'REFUNDED' && r != null) {
       const round = get(r)
       round.refunded = true

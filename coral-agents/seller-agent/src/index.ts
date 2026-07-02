@@ -14,14 +14,14 @@
  *      SERVICE (what deliverService returns), SOLANA_RPC_URL, ANTHROPIC_API_KEY|OPENAI_API_KEY.
  */
 import {
-  startCoralAgent, verb, parseWant, formatBid, parseAward, formatEscrowRequired, parseDeposited,
+  startCoralAgent, verb, parseWant, formatBid, formatProposal, parseAward, formatEscrowRequired, parseDeposited,
 } from '@pay/agent-runtime'
 import type { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from '@solana/web3.js'
 import { generatePaymentUrl, verifyPayment } from './payment.js'
 import { deliverService } from './service.js'
 import { ReplayGuard } from './replay.js'
-import { decideBid, sellerConfigFromEnv } from './bidder.js'
+import { decideBid, generateProposal, sellerConfigFromEnv } from './bidder.js'
 import { makeProgram, isFunded } from './escrow.js'
 
 const NAME = process.env.AGENT_NAME ?? 'seller-agent'
@@ -56,9 +56,14 @@ await startCoralAgent({ agentName: NAME }, async (ctx) => {
       // ── Market: WANT → decide whether to bid ───────────────────────────────
       const want = parseWant(text)
       if (want) {
+        // Stagger LLM calls across sellers to avoid simultaneous OpenRouter requests.
+        // Each agent gets a random 0-6s delay so two sellers don't hammer the API at the same instant.
+        await new Promise((r) => setTimeout(r, Math.random() * 6000))
         const d = await decideBid(want, cfg)
         if (d.bid) {
           quoted.set(want.round, { service: want.service, arg: want.arg, priceSol: d.priceSol })
+          const proposal = await generateProposal(want, cfg)
+          await ctx.reply(mention, formatProposal({ round: want.round, by: NAME, content: proposal }))
           await ctx.reply(mention, formatBid({ round: want.round, priceSol: d.priceSol, by: NAME, note: d.note }))
         } else if (trace) {
           console.error(`[${NAME}] no bid on round ${want.round}: ${d.note}`)

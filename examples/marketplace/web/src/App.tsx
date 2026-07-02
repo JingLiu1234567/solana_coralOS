@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFeed, startMarket } from './api'
 import { MarketView } from './components/MarketView'
 import { Explainer } from './components/Explainer'
+import { AgentGraph } from './components/AgentGraph'
 
 /** Read ?session=<id> from the URL so the launcher can deep-link straight to a live market. */
 const initialSession = new URLSearchParams(window.location.search).get('session') ?? ''
@@ -31,8 +32,8 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-head">
-        <h1>The Agent Marketplace</h1>
-        <span className="sub">LLM agents compete on CoralOS · settled by Solana escrow</span>
+        <h1>TenderNet</h1>
+        <span className="sub">AI-powered government tendering · settled on Solana</span>
         <span className={`dot ${connected ? 'dot-on' : 'dot-off'}`} data-testid="conn" title={connected ? 'connected' : (error ?? 'disconnected')} />
       </header>
 
@@ -44,16 +45,28 @@ export default function App() {
           onChange={(e) => setSession(e.target.value.trim())}
         />
         <button onClick={onStart} disabled={starting} data-testid="start">
-          {starting ? 'starting…' : 'Start a market'}
+          {starting ? 'starting…' : 'Launch a tender'}
         </button>
       </div>
       {startErr && <p className="start-err" data-testid="start-err">{startErr}</p>}
 
-      <Explainer />
+      {rounds.length === 0 && <Explainer />}
 
       <main>
-        {session ? <MarketView rounds={rounds} /> : (
-          <p className="empty">Fund your wallets, then <strong>Start a market</strong> — agents will bid and settle live.</p>
+        {!session && (
+          <p className="empty">Click <strong>Launch a tender</strong> to begin.</p>
+        )}
+        {session && rounds.length === 0 && (
+          <p className="empty" data-testid="empty">Waiting for the public authority to publish a tender…</p>
+        )}
+        {session && rounds.length > 0 && (
+          <AgentGraph round={rounds[rounds.length - 1]} />
+        )}
+        {session && rounds.length > 1 && (
+          <>
+            <p className="ag-history-label">Previous rounds</p>
+            <MarketView rounds={rounds.slice(0, -1)} />
+          </>
         )}
       </main>
     </div>

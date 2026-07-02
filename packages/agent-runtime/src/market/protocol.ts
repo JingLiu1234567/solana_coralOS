@@ -16,6 +16,7 @@ export interface Want {
   round: number
   service: string
   arg: string
+  brief?: string
   budgetSol: number
 }
 
@@ -62,16 +63,51 @@ export function messageRound(text: string): number | undefined {
 
 // ── WANT ──────────────────────────────────────────────────────────────────────
 export function formatWant(w: Want): string {
-  return `WANT round=${w.round} service=${w.service} arg=${w.arg} budget=${w.budgetSol}`
+  const briefPart = w.brief ? ` brief="${w.brief.replace(/"/g, "'")}"` : ''
+  return `WANT round=${w.round} service=${w.service} arg="${w.arg}"${briefPart} budget=${w.budgetSol}`
 }
 export function parseWant(text: string): Want | null {
   if (verb(text) !== 'WANT') return null
   const round = num(text, 'round')
   const service = tok(text, 'service')
-  const arg = tok(text, 'arg')
+  const argMatch = text.match(/\barg="([^"]*)"|arg=(\S+)/)
+  const arg = argMatch?.[1] ?? argMatch?.[2]
+  const briefMatch = text.match(/\bbrief="([^"]*)"/)
+  const brief = briefMatch?.[1]
   const budgetSol = num(text, 'budget')
   if (round == null || !service || arg == null || budgetSol == null) return null
-  return { round, service, arg, budgetSol }
+  return { round, service, arg, ...(brief ? { brief } : {}), budgetSol }
+}
+
+// ── PROPOSAL ──────────────────────────────────────────────────────────────────
+export interface ProposalContent {
+  executive_summary: string
+  methodology: string
+  ac_responses: Record<string, string>
+  team_credentials: string
+  social_value: string
+  price_justification: string
+  key_differentiator?: string
+}
+export interface Proposal {
+  round: number
+  by: string
+  content: ProposalContent
+}
+export function formatProposal(p: Proposal): string {
+  return `PROPOSAL round=${p.round} by=${p.by} ${JSON.stringify(p.content)}`
+}
+export function parseProposal(text: string): Proposal | null {
+  if (verb(text) !== 'PROPOSAL') return null
+  const round = num(text, 'round')
+  const by = tok(text, 'by')
+  if (round == null || !by) return null
+  const jsonStart = text.indexOf('{')
+  if (jsonStart === -1) return null
+  try {
+    const content = JSON.parse(text.slice(jsonStart)) as ProposalContent
+    return { round, by, content }
+  } catch { return null }
 }
 
 // ── BID ───────────────────────────────────────────────────────────────────────

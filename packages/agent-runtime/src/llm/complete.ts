@@ -69,9 +69,10 @@ async function completeAnthropic(opts: CompleteOpts, model: string, maxTokens: n
 async function completeOpenAI(opts: CompleteOpts, model: string, maxTokens: number): Promise<string> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY not set')
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/$/, '')
+  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json', 'HTTP-Referer': 'https://github.com/JingLiu1234567/solana_coralOS' },
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,

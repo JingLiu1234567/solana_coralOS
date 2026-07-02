@@ -58,13 +58,43 @@ async function main() {
   const llmOpts: Record<string, unknown> = {}
   if (env.ANTHROPIC_API_KEY) llmOpts.ANTHROPIC_API_KEY = str(env.ANTHROPIC_API_KEY)
   if (env.OPENAI_API_KEY) llmOpts.OPENAI_API_KEY = str(env.OPENAI_API_KEY)
+  if (env.OPENAI_BASE_URL) llmOpts.OPENAI_BASE_URL = str(env.OPENAI_BASE_URL)
   if (env.LLM_PROVIDER) llmOpts.LLM_PROVIDER = str(env.LLM_PROVIDER)
   if (env.LLM_MODEL) llmOpts.LLM_MODEL = str(env.LLM_MODEL)
   if (trace) llmOpts.TRACE = str(trace)
 
+  // Per-agent LLM opts — each seller uses its own provider/key to avoid shared rate-limit buckets.
+  // Floor prices are set close together (60-75% of budget) so bids cluster in a realistic range
+  // and quality scores, not price alone, determine the winner.
+  const budget = Number(env.BUYER_MAX_SOL ?? '0.001')
+  const sellerLlmOpts: Record<string, Record<string, unknown>> = {
+    'insight-research': {
+      ...(env.OPENAI_API_KEY_RAPID
+        ? { OPENAI_API_KEY: str(env.OPENAI_API_KEY_RAPID), LLM_PROVIDER: str('openai'), LLM_MODEL: str('gpt-4o-mini') }
+        : llmOpts),
+      FLOOR_SOL: f64(Math.round(budget * 0.75 * 10000) / 10000),
+      SERVICES: str('govreport'),
+      PERSONA: str('Insight Research Ltd, a UK public policy research consultancy specialising in citizen engagement and public services evaluation'),
+    },
+    'stratford-advisory': {
+      ...(env.DEEPSEEK_API_KEY
+        ? { OPENAI_API_KEY: str(env.DEEPSEEK_API_KEY), OPENAI_BASE_URL: str('https://api.deepseek.com'), LLM_PROVIDER: str('openai'), LLM_MODEL: str('deepseek-chat') }
+        : llmOpts),
+      FLOOR_SOL: f64(Math.round(budget * 0.70 * 10000) / 10000),
+      SERVICES: str('govreport'),
+      PERSONA: str('Stratford Advisory, a premium UK management consultancy specialising in AI governance, public sector strategy, and responsible technology adoption'),
+    },
+    'whitehall-analytics': {
+      ...llmOpts,
+      FLOOR_SOL: f64(Math.round(budget * 0.65 * 10000) / 10000),
+      SERVICES: str('govreport'),
+      PERSONA: str('Whitehall Analytics, a government data analytics firm with deep expertise in AI, digital transformation, and evidence-based policy research'),
+    },
+  }
+
   // Every seller shares the receive wallet + RPC; persona/floor/inventory come from each toml default.
   const seller = (name: string) =>
-    agent(name, { SELLER_WALLET: str(wallet), SOLANA_RPC_URL: str(rpc), AGENT_NAME: str(name), ...llmOpts })
+    agent(name, { SELLER_WALLET: str(wallet), SOLANA_RPC_URL: str(rpc), AGENT_NAME: str(name), ...(sellerLlmOpts[name] ?? llmOpts) })
 
   // World Cup specialist — only joins when a TxLINE token is present (see examples/txodds/DEMO.md).
   // It carries SERVICES=txline + the token; the generalist personas decline txline WANTs automatically.
@@ -79,7 +109,7 @@ async function main() {
       })]
     : []
 
-  const sellers = ['seller-cheap', 'seller-premium', 'seller-lazy', ...(txlineKey ? ['seller-worldcup'] : [])]
+  const sellers = ['insight-research', 'stratford-advisory', 'whitehall-analytics', ...(txlineKey ? ['seller-worldcup'] : [])]
 
   // Optional broker swarm (ENABLE_BROKER=1, see docs/SWARM.md): the buyer buys from a broker, which
   // resells from the real sellers. Needs a funded broker wallet — `node scripts/setup.js --broker`.
@@ -121,6 +151,9 @@ async function main() {
     BUYER_ARG: str(buyerArg),
     ...(buyerArgs ? { BUYER_ARGS: str(buyerArgs) } : {}),
     MARKET_SELLERS: str(buyerSellers.join(',')),
+    ...(env.MAX_ROUNDS ? { MAX_ROUNDS: f64(Number(env.MAX_ROUNDS)) } : {}),
+    ...(env.BID_WINDOW_MS ? { BID_WINDOW_MS: f64(Number(env.BID_WINDOW_MS)) } : {}),
+    ...(env.CYCLE_INTERVAL_MS ? { CYCLE_INTERVAL_MS: f64(Number(env.CYCLE_INTERVAL_MS)) } : {}),
     ...llmOpts,
   }
 
@@ -130,9 +163,9 @@ async function main() {
       agentGraphRequest: {
         agents: [
           agent('buyer-agent', buyerOpts),
-          seller('seller-cheap'),
-          seller('seller-premium'),
-          seller('seller-lazy'),
+          seller('insight-research'),
+          seller('stratford-advisory'),
+          seller('whitehall-analytics'),
           ...worldcup,
           ...brokerAgents,
         ],
