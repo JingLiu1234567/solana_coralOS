@@ -4,7 +4,16 @@
 >
 > Built for the [Imperial AI Agent Hackathon](https://superteam.fun/earn/listing/imperial-ai-agent-hackathon-build-the-agent-economy) · Superteam UK · July 2026
 
-A buyer agent publishes a tender brief. Three competing consultancy agents read it, write full proposals, and submit bids. The buyer's LLM picks best value. Funds are locked in a Solana escrow. The winner delivers a research report. An LLM Judge scores the quality. Escrow releases on pass — all autonomously, all on-chain.
+A buyer agent publishes a tender brief in a shared CoralOS thread. Three competing consultancy agents
+read it, write full proposals, and bid. The buyer negotiates with all three live, picks best value, and
+funds a Solana escrow. The winner delivers a research report; the buyer scores it against the original
+brief and releases escrow on a passing score — all autonomously, all on-chain, all visible live in the
+browser.
+
+Each agent — buyer, Whitehall Analytics, Insight Research, Stratford Advisory — is a **real, independent
+Claude Code session**, not a scripted bot. They coordinate over CoralOS (MCP) in one shared thread, so the
+negotiation you see (sellers challenging each other's pricing, the buyer pushing back with follow-up
+questions) is genuine multi-agent reasoning, not a canned script.
 
 ![TenderNet Protocol Trace](docs/screenshot.png)
 
@@ -14,7 +23,7 @@ A buyer agent publishes a tender brief. Three competing consultancy agents read 
 
 | Pillar | Role | Remove it → |
 |--------|------|-------------|
-| **LLM agents** | Sellers write competitive proposals; buyer judges best value; LLM Judge scores delivery quality | Static vending machine |
+| **LLM agents** | Sellers write competitive proposals; buyer negotiates, judges best value, and scores delivery quality | Static vending machine |
 | **CoralOS** | Shared market thread — dynamic discovery, multi-agent coordination via MCP | Point-to-point pipes |
 | **Solana escrow** | Funds locked until delivery verified; refundable if seller no-shows | Trust-me play money |
 
@@ -26,35 +35,38 @@ A buyer agent publishes a tender brief. Three competing consultancy agents read 
 TENDER
   UK Govt Buyer  →  WANT · "Public attitudes towards AI adoption in UK public services"
 
-  PROPOSALS RECEIVED (3)
-  ├─ Whitehall Analytics    BID + PROPOSAL · 0.0008 SOL    ← AWARDED ✓
-  ├─ Stratford Advisory     BID + PROPOSAL · 0.00085 SOL
-  └─ Insight Research Ltd   BID + PROPOSAL · 0.0009 SOL
+  BIDS + NEGOTIATION (live, multi-round)
+  ├─ Whitehall Analytics    BID · 0.0008 SOL    ← AWARDED ✓
+  ├─ Stratford Advisory     BID · 0.00085 SOL
+  └─ Insight Research Ltd   BID · 0.0009 SOL
 
 AWARD
   UK Govt Buyer   →  AWARD · → Whitehall Analytics
-  Solana Escrow   →  ESCROW FUNDED · 0.0008 SOL locked     ↗ tx
+  Solana Escrow   →  DEPOSITED · 0.0008 SOL locked     ↗ tx
 
 DELIVERY
-  Whitehall Analytics  →  DELIVERED · Final research report    Score 80/100 ✅
-  Solana Escrow        →  ESCROW RELEASED · 0.0008 SOL → WA   ↗ tx
+  Whitehall Analytics  →  DELIVERED · Final research report    Score 89/100 ✅
+  Solana Escrow        →  RELEASED · 0.0008 SOL → WA   ↗ tx
 ```
 
-Each step streams live to the browser via SSE. Every row in the trace is clickable — open a seller's full proposal or the delivered research report in a side panel.
+The buyer and sellers argue their case in the same CoralOS thread before the award — real back-and-forth,
+not a single bid-and-done round. Every dashboard view (Graph / Chat) reads the same live transcript.
 
 ---
 
 ## What was built
 
-This project extends the [solana_coralOS](https://github.com/trilltino/solana_coralOS) starter kit with a complete UK government procurement use case:
+This project extends the [solana_coralOS](https://github.com/trilltino/solana_coralOS) starter kit with a
+complete UK government procurement use case, orchestrated by real Claude Code agent sessions rather than
+scripted bots:
 
 | Component | What's new |
 |-----------|------------|
-| **`govreport` service** | `deliverService()` now generates structured UK public policy research reports — executive summary, methodology, AC responses, team credentials, social value, price justification |
-| **Three consultancy personas** | Whitehall Analytics (WA), Insight Research Ltd (IR), Stratford Advisory (SA) — each with distinct bidding floors, strategies, and proposal styles |
-| **LLM Judge** | New agent type: scores delivered reports 0–100 against the original tender brief; escrow only releases on a passing score |
-| **Protocol trace UI** | LangSmith-style split-pane dashboard — animated Solana-gradient rail, L-connector tree lines, phase labels, sequential stagger animations, clickable detail panels |
-| **Phase-aware buyer** | Buyer runs exactly one round (`MAX_ROUNDS=1`) — publishes, evaluates, awards, monitors delivery |
+| **Four CLAUDE.md personas** | `coral-agents/{buyer,whitehall-analytics,insight-research,stratford-advisory}` — each a real Claude Code session with its own strategy, floor price, and communication loop |
+| **`govreport` service** | The tender: a UK public policy research report — executive summary, methodology, findings, recommendations, evidence base |
+| **Buyer-as-judge** | The buyer itself negotiates, awards, scores the delivered draft against the brief (0–100), and only releases escrow on a passing score |
+| **Solana escrow settlement** | Deposit/release run against a real Anchor program on devnet — every settlement has a live Explorer link |
+| **Dashboard (Graph + Chat views)** | Live SSE-fed React UI — a ChatDev-style agent graph (who's talking to whom, live message preview) and a full chat transcript, both reading the same feed |
 
 ---
 
@@ -64,12 +76,12 @@ This project extends the [solana_coralOS](https://github.com/trilltino/solana_co
 
 | Need | Why | Get it |
 |------|-----|--------|
-| **Node 20+** | runtime + agents | [nodejs.org](https://nodejs.org) |
-| **Docker Desktop** (running) | coral-server + agent containers | [docker.com](https://www.docker.com/products/docker-desktop/) |
-| **An LLM key** | agents' bidding + proposal generation + quality scoring | `ANTHROPIC_API_KEY` (default) or `LLM_PROVIDER=openai` + `OPENAI_API_KEY` |
-| **Venice AI key** *(optional)* | alternative LLM provider — free credits with code **IMPERIAL50** | [venice.ai](https://venice.ai) |
+| **Node 20+** | feed/web tooling + wallet scripts | [nodejs.org](https://nodejs.org) |
+| **Docker Desktop** (running) | runs coral-server, the MCP coordinator | [docker.com](https://www.docker.com/products/docker-desktop/) |
+| **Claude Code CLI**, logged in | the buyer + 3 seller personas each run as a `claude` session | [claude.com/code](https://claude.com/code) |
 
-Devnet SOL is generated automatically — no wallet needed beforehand.
+Devnet SOL is generated automatically — no wallet needed beforehand. The agents don't need an LLM API key
+in `.env`; they run as your logged-in Claude Code sessions.
 
 ### 1. Clone and set up
 
@@ -79,60 +91,63 @@ cd solana_coralOS
 node scripts/setup.js        # creates .env + two funded devnet wallets
 ```
 
-Add your LLM key to `.env`:
-
-```ini
-ANTHROPIC_API_KEY=sk-ant-…
-# or:
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=sk-…
-```
-
-Fund both printed wallet addresses at [faucet.solana.com](https://faucet.solana.com) (GitHub login required).
+Fund both printed wallet addresses at [faucet.solana.com](https://faucet.solana.com) (GitHub login
+required; 1 SOL each is plenty).
 
 ### 2. Run
 
-```sh
-npm run dev
+**Windows (PowerShell):**
+
+```powershell
+.\dev.ps1
 ```
 
-Opens the dashboard at `http://localhost:5173`. Click **Launch a tender** — the full 7-step protocol runs automatically in ~60 seconds.
+One command: starts coral-server, the feed server, and the dashboard; creates a session; opens 4 agent
+terminals wired up to it; opens the dashboard in its own window.
+
+**macOS / Linux:**
+
+```sh
+docker compose up -d coral                       # start coral-server
+cd examples/marketplace/feed && npm install && npm start &   # feed server (:4000)
+cd examples/marketplace/web && npm install && npm run dev &  # dashboard  (:5173)
+bash coral-agents/start-session.sh               # creates the session, prints each agent's directory
+```
+
+Then open 4 terminals and start each persona:
+
+```sh
+cd coral-agents/buyer               && claude   # repeat for whitehall-analytics, insight-research, stratford-advisory
+```
+
+In each terminal, type `go`. Open `http://localhost:5173?session=<the session id start-session.sh printed>`.
 
 ### 3. Watch it live
 
-The protocol trace streams each step as it happens:
+Two dashboard views (toggle in the sidebar), both fed by the same live transcript:
 
-1. **WANT** appears — buyer has published the tender brief (click `›` to read it)
-2. **PROPOSALS** arrive one by one — each seller agent has written a full proposal (click any row to read it)
-3. **AWARD** — buyer's LLM picks the best-value proposal
-4. **ESCROW FUNDED** — SOL locked on-chain (click `↗ tx` to see it on Solana Explorer)
-5. **DELIVERED** — winner's research report arrives (click `›` to read it)
-6. **Score 80/100 ✅** — LLM Judge grades the report against the tender brief
-7. **ESCROW RELEASED** — funds paid out on-chain (click `↗ tx`)
-
-`Step 7/7 Payment released ✅` at the bottom confirms full settlement.
+- **Chat** — the full conversation: WANT, every bid and counter-argument, the award, escrow deposit,
+  the delivered draft, the review score, and the final on-chain release — each tagged and readable.
+- **Graph** — a live agent-topology view: buyer ↔ sellers while bidding, collapsing to buyer ↔ winner once
+  awarded, with a live "latest message" panel and clickable Solana Explorer links for deposit/release in
+  the sidebar once they happen.
 
 ---
 
 ## Architecture
 
-### Agent roster
+### Agent roster (`coral-agents/`)
 
 | Agent | Identity | Role |
 |-------|----------|------|
-| `buyer-agent` | UK Govt Buyer | Publishes tender, evaluates proposals, awards contract, monitors delivery, triggers escrow release |
-| `whitehall-analytics` | Whitehall Analytics | Government data analytics — bids on `govreport`, delivers AI policy research |
-| `insight-research` | Insight Research Ltd | Budget-focused consultancy — competitive low bidder |
-| `stratford-advisory` | Stratford Advisory | Premium management consultancy — quality-first, higher floor |
+| `buyer` | UK Govt Buyer | Publishes the tender, negotiates, awards, funds + releases escrow, scores the delivered draft |
+| `whitehall-analytics` | Whitehall Analytics | Government data analytics consultancy — quality-first, mid floor |
+| `insight-research` | Insight Research Ltd | Citizen-engagement consultancy — lowest floor, price-competitive |
+| `stratford-advisory` | Stratford Advisory | Premium governance consultancy — highest floor, quality-over-price |
 
-### Runtime modules (`packages/agent-runtime`)
-
-| Module | Does |
-|--------|------|
-| `llm/complete.ts` | Provider-agnostic LLM shim — Anthropic, OpenAI, or Venice AI; `LLM_PROVIDER=openai` flips the whole market |
-| `coral/mcp.ts` | CoralOS client — `waitForMention`, `createThread`, `send/reply` over MCP StreamableHTTP |
-| `market/protocol.ts` | Wire format: WANT / BID / AWARD / ESCROW_REQUIRED / DEPOSITED / DELIVERED / RELEASED |
-| `solana/pay.ts` | Solana Pay integration — `reference` key binds each deal; `signTransfer`, `verifyPayment` |
+Each is a `CLAUDE.md` + `coral-agent.toml` + `startup.sh` — coral-server registers them and hands each a
+CoralOS MCP connection URL; the actual negotiating "brain" is the live Claude Code session you start in
+that directory.
 
 ### Escrow contract (`examples/agent-economy/escrow`)
 
@@ -140,11 +155,17 @@ Anchor/Rust program deployed on devnet. Three instructions:
 
 | Instruction | Does |
 |-------------|------|
-| `initialize` | Buyer deposits SOL into PDA seeded by `(buyer, reference)` |
-| `release` | Buyer confirms delivery → pays seller, closes account, returns rent |
-| `refund` | Buyer reclaims deposit after deadline if seller no-shows |
+| `initialize` | Buyer deposits SOL into a PDA seeded by `(buyer, reference)` |
+| `release` | Buyer confirms delivery → pays the seller, closes the account, returns rent |
+| `refund` | Buyer reclaims the deposit after a deadline if the seller no-shows |
 
-The `reference` key is the binding thread: it seeds the escrow PDA, tags the Solana Pay transfer, and travels through every CoralOS message — one key, three systems, one deal.
+`scripts/solana/{deposit,release}.mjs` are what the buyer session actually runs against this program.
+
+### Dashboard (`examples/marketplace/{feed,web}`)
+
+`feed` polls coral-server's session state and folds the raw transcript into typed rounds (want / bids /
+award / deposit / delivered / release) using the wire-protocol parser in `packages/agent-runtime`; `web`
+is the React dashboard (Graph + Chat views) that reads it.
 
 ---
 
@@ -152,26 +173,28 @@ The `reference` key is the binding thread: it seeds the escrow PDA, tags the Sol
 
 | Directory | Purpose |
 |-----------|---------|
-| `coral-agents/buyer-agent/` | Buyer — publishes tender, evaluates proposals, operates escrow |
-| `coral-agents/seller-agent/` | Shared seller image — `deliverService()` is the fork point |
-| `coral-agents/whitehall-analytics/` | Seller persona: government analytics, quality-first |
-| `coral-agents/insight-research/` | Seller persona: budget consultancy, competitive floor |
-| `coral-agents/stratford-advisory/` | Seller persona: premium advisory, evidence-based |
-| `examples/marketplace/` | Market launcher (`start.ts`), SSE feed, React trace UI |
-| `packages/agent-runtime/` | Shared runtime: CoralOS · Solana Pay · LLM · market protocol |
-| `examples/agent-economy/escrow/` | Anchor escrow contract |
-| `scripts/` | `setup.js` (wallets + `.env`), `demo.js` (`npm run dev`), `doctor.js` (health check) |
+| `coral-agents/{buyer,whitehall-analytics,insight-research,stratford-advisory}/` | The four TenderNet personas — CLAUDE.md, coral-agent.toml, startup.sh |
+| `coral-agents/coral-mcp-proxy.mjs` | MCP proxy each agent's `.mcp.json` points at |
+| `examples/marketplace/feed/` | SSE feed server — folds the coral transcript into rounds |
+| `examples/marketplace/web/` | React dashboard (Graph + Chat views) |
+| `examples/agent-economy/escrow/` | Anchor escrow contract (the settlement spine) |
+| `packages/agent-runtime/` | Shared wire-protocol parser used by the feed server |
+| `scripts/setup.js` | Generates devnet wallets + `.env` |
+| `scripts/solana/` | `deposit.mjs` / `release.mjs` / `balance.mjs` / `check-funded.mjs` — what the buyer session runs |
+| `dev.ps1` | Windows one-command launcher |
+| `coral-agents/start-session.sh` | macOS/Linux session-creation helper (see Quick start) |
+
+`examples/agent-economy` (beyond `escrow/`) and `examples/txodds` are earlier/alternate demo tracks from
+this kit's history and aren't part of the TenderNet flow above.
 
 ---
 
-## Task runner (`just`, optional)
+## Troubleshooting
 
-```sh
-just dev        # full demo: setup → build → launch
-just doctor     # checks Docker, Node, wallet funding, coral server
-just logs       # tail coral-server logs
-just down       # stop everything
-```
+The most common issue: **coral-server occasionally hangs** (port stays open, stops answering requests).
+Fix: `docker compose restart coral`, then re-run the session-creation step (`.\dev.ps1` or
+`bash coral-agents/start-session.sh`). `just doctor` checks Docker/Node/wallet funding if you have `just`
+installed.
 
 ---
 

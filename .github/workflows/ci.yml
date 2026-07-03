@@ -29,12 +29,6 @@ jobs:
           node-version: 20
       - name: Build the runtime (dependents need its dist)
         run: cd packages/agent-runtime && npm install && npm run build
-      - name: seller-agent (typecheck + tests)
-        run: cd coral-agents/seller-agent && npm install && npm run typecheck && npm test
-      - name: buyer-agent (typecheck + tests)
-        run: cd coral-agents/buyer-agent && npm install && npm run typecheck && npm test
-      - name: broker (typecheck + tests)
-        run: cd coral-agents/broker && npm install && npm run typecheck && npm test
       - name: marketplace launcher (typecheck)
         run: cd examples/marketplace && npm install && npm run typecheck
       - name: marketplace feed (typecheck + tests)
