@@ -6,29 +6,35 @@ Contributions are welcome. The `main` branch is the integration branch — targe
 
 | Directory | Language | Typical changes |
 |-----------|----------|-----------------|
-| `packages/agent-runtime/` | TypeScript | The three-pillar runtime: CoralOS client, Solana Pay, the LLM shim, the market protocol |
-| `coral-agents/` | TypeScript | The buyer/seller agents + seller personas; fork `seller-agent/src/service.ts` |
-| `examples/marketplace/` | TypeScript | The market launcher (`start.ts`) + the React dashboard (`web/`) + feed server |
+| `coral-agents/{buyer,whitehall-analytics,insight-research,stratford-advisory}/` | `CLAUDE.md` prompts + TOML/shell | Persona strategy, floor prices, wire-protocol format instructions |
+| `examples/marketplace/feed/` | TypeScript | SSE feed server — folds the coral transcript into typed rounds |
+| `examples/marketplace/web/` | TypeScript/React | The dashboard (Graph + Chat views) |
+| `packages/agent-runtime/` | TypeScript | Shared wire-protocol parser (`market/protocol.ts`) used by the feed server |
 | `examples/agent-economy/escrow/` | Rust (Anchor) | The escrow settlement contract |
+| `scripts/`, `scripts/solana/` | Node scripts | Wallet setup, deposit/release/balance helpers the buyer agent runs |
 
 ## Prerequisites
 
 - Node.js 20+
-- Docker Desktop (coral-server launches the agents)
+- Docker Desktop (runs coral-server)
+- The `claude` CLI, logged in (the 4 personas run as real Claude Code sessions — see `README.md` Quick
+  start for how to launch them)
 
 ## Development Commands
 
 ```sh
-# build the runtime first — coral-agents/examples depend on its dist via file: deps
+# build the runtime first — the feed server depends on its dist via a file: dep
 cd packages/agent-runtime && npm install && npm run build && npm run typecheck && npm test
 
-# typecheck + test the agents
-cd coral-agents/seller-agent && npm install && npm run typecheck && npm test
-cd coral-agents/buyer-agent && npm install && npm run typecheck && npm test
-
-# the dashboard (runs offline against fixtures — no devnet)
-cd examples/marketplace/web && npm install && npm test && npm run e2e
+# feed + dashboard
+cd examples/marketplace/feed && npm install && npm run typecheck && npm test
+cd examples/marketplace/web && npm install && npm run typecheck && npm test
 ```
+
+Changing a persona's behavior means editing its `CLAUDE.md` (prompt), not TypeScript — there's no agent
+binary to rebuild. If you change the wire-protocol format, keep it in sync across all four `CLAUDE.md`
+files and `packages/agent-runtime/src/market/protocol.ts`'s parsers, or the dashboard will silently stop
+folding those messages into rounds.
 
 ## PR Workflow
 
@@ -41,7 +47,7 @@ cd examples/marketplace/web && npm install && npm test && npm run e2e
 
 ## Code Style
 
-- **TypeScript:** run `npm run typecheck && npm test` in `packages/agent-runtime/` (and the package you changed) before committing.
+- **TypeScript:** run `npm run typecheck && npm test` in the package(s) you changed before committing.
 - **Documentation:** READMEs should explain *why* a module exists, not just *what* it does.
 
 ## Security
