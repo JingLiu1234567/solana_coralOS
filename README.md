@@ -108,6 +108,14 @@ terminals wired up to it; opens the dashboard in its own window.
 **macOS / Linux:**
 
 ```sh
+node scripts/demo.js        # or: npm run dev
+```
+
+Starts coral-server, wallets, the feed + dashboard servers, and creates the session — everything
+`dev.ps1` does except opening the 4 agent terminals (Node can't reliably do that cross-platform, so
+you do this part yourself). Or run the steps by hand:
+
+```sh
 docker compose up -d coral                       # start coral-server
 cd examples/marketplace/feed && npm install && npm start &   # feed server (:4000)
 cd examples/marketplace/web && npm install && npm run dev &  # dashboard  (:5173)
@@ -191,10 +199,8 @@ this kit's history and aren't part of the TenderNet flow above.
 
 ## Troubleshooting
 
-The most common issue: **coral-server occasionally hangs** (port stays open, stops answering requests).
-Fix: `docker compose restart coral`, then re-run the session-creation step (`.\dev.ps1` or
-`bash coral-agents/start-session.sh`). `just doctor` checks Docker/Node/wallet funding if you have `just`
-installed.
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — coral-server occasionally hangs and needs a
+`docker compose restart coral`, wallet funding, and other rough edges are documented there.
 
 ---
 

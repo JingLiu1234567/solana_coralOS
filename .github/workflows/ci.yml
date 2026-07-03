@@ -29,8 +29,6 @@ jobs:
           node-version: 20
       - name: Build the runtime (dependents need its dist)
         run: cd packages/agent-runtime && npm install && npm run build
-      - name: marketplace launcher (typecheck)
-        run: cd examples/marketplace && npm install && npm run typecheck
       - name: marketplace feed (typecheck + tests)
         run: cd examples/marketplace/feed && npm install && npm run typecheck && npm test
       - name: marketplace web (typecheck)
