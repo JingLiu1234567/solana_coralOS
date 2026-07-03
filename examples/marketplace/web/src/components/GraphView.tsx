@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import type { Round } from '../types'
 import type { ClassifiedMessage } from '../types'
 import { PixelBody, PixelAgentIcon } from './PixelSprite'
+import { SettlementCelebration } from './SettlementCelebration'
 
 export const AGENTS: Record<string, { label: string; color: string; sub: string }> = {
   buyer:                { label: 'UK Govt Buyer',        color: '#60a5fa', sub: 'BUYER' },
@@ -77,6 +78,7 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
 
   return (
     <div className="gv-canvas">
+      <SettlementCelebration round={round} />
       {/* dot-grid pattern via CSS background */}
       <svg className="gv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
         {visibleSellers.map((s) => {
