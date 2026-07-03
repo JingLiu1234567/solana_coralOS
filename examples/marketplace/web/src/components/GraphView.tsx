@@ -50,6 +50,12 @@ interface Props {
   lastMessage?: ClassifiedMessage
 }
 
+/** Point at t=0.5 along a cubic bezier — used to park the reduced-motion courier mid-line. */
+function midpoint(x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): [number, number] {
+  const at = (a: number, b: number, c: number, d: number) => 0.125 * a + 0.375 * b + 0.375 * c + 0.125 * d
+  return [at(x0, x1, x2, x3), at(y0, y1, y2, y3)]
+}
+
 /** First few non-empty lines, wire-protocol prefix stripped, capped so the card stays a fixed size. */
 function messagePreview(text: string): string {
   const nonEmpty = text.trim().split('\n').filter((l) => l.trim().length > 0)
@@ -97,16 +103,20 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
                 strokeDasharray={isActive && !isWinner ? '1 0.8' : undefined}
                 className={isActive ? 'gv-line-active' : ''}
               />
-              {isActive && (
-                reducedMotion ? (
-                  // Reduced motion: park the courier at the destination, no travel animation.
-                  <svg x={(lastSender === s ? x2 : x1) - 2} y={(lastSender === s ? y2 : y1) - 2.25}
-                       width="4" height="4.5" viewBox="0 0 16 18" shapeRendering="crispEdges">
+              {isActive && (() => {
+                // Centers the sprite's scaled bounding box (16x18 · 0.1875 = 3x3.375) on whatever
+                // point it's placed at — either the animateMotion path point, or (reduced motion)
+                // a fixed midpoint below.
+                const CENTER = 'translate(-1.5,-1.6875) scale(0.1875)'
+                return reducedMotion ? (
+                  // Reduced motion: park the courier at the path's midpoint (not the destination —
+                  // that coordinate sits under the destination node's own HTML avatar and would be
+                  // invisibly hidden behind it), no travel animation.
+                  <g shapeRendering="crispEdges" transform={`translate(${midpoint(x1, y1, cx1, y1, cx2, y2, x2, y2).join(',')}) ${CENTER}`}>
                     <PixelBody color={info.color} />
-                  </svg>
+                  </g>
                 ) : (
-                  <svg x="-2" y="-2.25" width="4" height="4.5" viewBox="0 0 16 18" shapeRendering="crispEdges"
-                       className="gv-courier">
+                  <g shapeRendering="crispEdges" className="gv-courier" transform={CENTER}>
                     <PixelBody color={info.color} walking />
                     <animateMotion
                       dur="1.8s"
@@ -115,9 +125,9 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
                         ? `M${x1} ${y1} C${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`
                         : `M${x2} ${y2} C${cx2} ${y2}, ${cx1} ${y1}, ${x1} ${y1}`}
                     />
-                  </svg>
+                  </g>
                 )
-              )}
+              })()}
             </g>
           )
         })}
