@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFeed, useMessages, startMarket } from './api'
 import { GraphView } from './components/GraphView'
 import { ChatView } from './components/ChatView'
+import { PixelAgentIcon } from './components/PixelSprite'
 import { explorerTx } from './types'
 
 const initialSession = new URLSearchParams(window.location.search).get('session') ?? ''
@@ -97,14 +98,13 @@ export default function App() {
         <div className="sidebar-section sidebar-legend">
           <div className="sidebar-label">AGENTS</div>
           {[
-            { id: 'buyer',                emoji: '🏛️',  name: 'UK Govt Buyer',       color: '#60a5fa', role: 'BUYER' },
-            { id: 'whitehall-analytics',  emoji: '📊',  name: 'Whitehall Analytics', color: '#f97316', role: 'SELLER' },
-            { id: 'insight-research',     emoji: '🔬',  name: 'Insight Research',    color: '#22c55e', role: 'SELLER' },
-            { id: 'stratford-advisory',   emoji: '🎯',  name: 'Stratford Advisory',  color: '#a855f7', role: 'SELLER' },
+            { id: 'buyer',                name: 'UK Govt Buyer',       color: '#60a5fa', role: 'BUYER' },
+            { id: 'whitehall-analytics',  name: 'Whitehall Analytics', color: '#f97316', role: 'SELLER' },
+            { id: 'insight-research',     name: 'Insight Research',    color: '#22c55e', role: 'SELLER' },
+            { id: 'stratford-advisory',   name: 'Stratford Advisory',  color: '#a855f7', role: 'SELLER' },
           ].map(a => (
             <div key={a.id} className="legend-row">
-              <span className="legend-dot" style={{ background: a.color }} />
-              <span className="legend-emoji">{a.emoji}</span>
+              <PixelAgentIcon color={a.color} size={18} className="legend-sprite" />
               <div className="legend-info">
                 <span className="legend-name">{a.name}</span>
                 <span className="legend-role">{a.role}</span>

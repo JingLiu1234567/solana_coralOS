@@ -1,18 +1,34 @@
 /**
  * GraphView — ChatDev-style agent topology canvas.
- * Shows buyer + seller nodes connected by SVG bezier curves.
- * Active sender pulses; awarded winner gets a highlighted connection.
+ * Shows buyer + seller nodes connected by SVG bezier curves, walked by a little pixel-art courier
+ * (not a bare dot) while a message is in flight. Active sender pulses; the awarded winner gets a
+ * highlighted connection.
  */
+import { useEffect, useState } from 'react'
 import type { Round } from '../types'
 import type { ClassifiedMessage } from '../types'
+import { PixelBody, PixelAgentIcon } from './PixelSprite'
 
-export const AGENTS: Record<string, { label: string; emoji: string; color: string; sub: string }> = {
-  buyer:                { label: 'UK Govt Buyer',        emoji: '🏛️',  color: '#60a5fa', sub: 'BUYER' },
-  'whitehall-analytics':{ label: 'Whitehall Analytics',  emoji: '📊',  color: '#f97316', sub: 'AGENT' },
-  'insight-research':   { label: 'Insight Research',     emoji: '🔬',  color: '#22c55e', sub: 'AGENT' },
-  'stratford-advisory': { label: 'Stratford Advisory',   emoji: '🎯',  color: '#a855f7', sub: 'AGENT' },
+export const AGENTS: Record<string, { label: string; color: string; sub: string }> = {
+  buyer:                { label: 'UK Govt Buyer',        color: '#60a5fa', sub: 'BUYER' },
+  'whitehall-analytics':{ label: 'Whitehall Analytics',  color: '#f97316', sub: 'AGENT' },
+  'insight-research':   { label: 'Insight Research',     color: '#22c55e', sub: 'AGENT' },
+  'stratford-advisory': { label: 'Stratford Advisory',   color: '#a855f7', sub: 'AGENT' },
 }
-const UNKNOWN = { label: 'Agent', emoji: '🤖', color: '#64748b', sub: 'AGENT' }
+const UNKNOWN = { label: 'Agent', color: '#64748b', sub: 'AGENT' }
+
+/** SMIL's animateMotion ignores the CSS reduced-motion media query, so gate it in JS. */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return reduced
+}
 
 // Fixed positions (% of canvas). Kept within the top ~60% of the canvas height so the bottom panel
 // (phase label + latest-message card) always has clear room below the lowest node, even with all
@@ -44,6 +60,7 @@ function messagePreview(text: string): string {
 }
 
 export function GraphView({ round, lastSender, sessionActive, lastMessage }: Props) {
+  const reducedMotion = usePrefersReducedMotion()
   const winner = round?.award?.to
   const sellers = ['whitehall-analytics', 'insight-research', 'stratford-advisory']
   // Once a winner is picked, the losing sellers have no further part to play — drop them from the
@@ -81,15 +98,25 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
                 className={isActive ? 'gv-line-active' : ''}
               />
               {isActive && (
-                <circle r="0.7" fill={info.color} opacity="0.9" className="gv-dot-travel">
-                  <animateMotion
-                    dur={lastSender === s ? '1.8s' : '1.8s'}
-                    repeatCount="indefinite"
-                    path={lastSender === s
-                      ? `M${x1} ${y1} C${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`
-                      : `M${x2} ${y2} C${cx2} ${y2}, ${cx1} ${y1}, ${x1} ${y1}`}
-                  />
-                </circle>
+                reducedMotion ? (
+                  // Reduced motion: park the courier at the destination, no travel animation.
+                  <svg x={(lastSender === s ? x2 : x1) - 2} y={(lastSender === s ? y2 : y1) - 2.25}
+                       width="4" height="4.5" viewBox="0 0 16 18" shapeRendering="crispEdges">
+                    <PixelBody color={info.color} />
+                  </svg>
+                ) : (
+                  <svg x="-2" y="-2.25" width="4" height="4.5" viewBox="0 0 16 18" shapeRendering="crispEdges"
+                       className="gv-courier">
+                    <PixelBody color={info.color} walking />
+                    <animateMotion
+                      dur="1.8s"
+                      repeatCount="indefinite"
+                      path={lastSender === s
+                        ? `M${x1} ${y1} C${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`
+                        : `M${x2} ${y2} C${cx2} ${y2}, ${cx1} ${y1}, ${x1} ${y1}`}
+                    />
+                  </svg>
+                )
               )}
             </g>
           )
@@ -114,7 +141,7 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
               '--node-color': info.color,
             } as React.CSSProperties}
           >
-            <div className="gv-node-avatar">{info.emoji}</div>
+            <div className="gv-node-avatar"><PixelAgentIcon color={info.color} size={32} /></div>
             <div className="gv-node-box" style={{ borderColor: isActive ? info.color : isWinner ? info.color : undefined }}>
               <span className="gv-node-sub">{isBuyer ? 'HUMAN' : info.sub}</span>
               <span className="gv-node-name">{info.label}</span>
@@ -144,7 +171,8 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
           {lastMessage && (
             <div className="gv-message-ticker">
               <span className="gv-message-sender" style={{ color: (AGENTS[lastMessage.sender] ?? UNKNOWN).color }}>
-                {(AGENTS[lastMessage.sender] ?? UNKNOWN).emoji} {(AGENTS[lastMessage.sender] ?? UNKNOWN).label}
+                <PixelAgentIcon color={(AGENTS[lastMessage.sender] ?? UNKNOWN).color} size={16} />
+                {(AGENTS[lastMessage.sender] ?? UNKNOWN).label}
               </span>
               <span className="gv-message-text">{messagePreview(lastMessage.text)}</span>
             </div>

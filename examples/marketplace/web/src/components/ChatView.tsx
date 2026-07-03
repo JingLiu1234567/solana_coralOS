@@ -5,6 +5,7 @@
 import { useEffect, useRef } from 'react'
 import type { ClassifiedMessage } from '../types'
 import { AGENTS } from './GraphView'
+import { PixelAgentIcon } from './PixelSprite'
 
 const TYPE_BADGE: Record<string, { label: string; bg: string }> = {
   'want':         { label: 'WANT',          bg: '#1d4ed8' },
@@ -28,7 +29,7 @@ interface BubbleProps { msg: ClassifiedMessage; isLast: boolean }
 
 function Bubble({ msg, isLast }: BubbleProps) {
   const isBuyer = msg.sender === 'buyer'
-  const info = AGENTS[msg.sender] ?? { label: msg.sender, emoji: '🤖', color: '#64748b' }
+  const info = AGENTS[msg.sender] ?? { label: msg.sender, color: '#64748b' }
   const badge = TYPE_BADGE[msg.type] ?? TYPE_BADGE['message']
   const score = msg.type === 'review' ? scoreFromText(msg.text) : null
   const lines = msg.text.trim().split('\n').slice(0, 12)
@@ -38,7 +39,7 @@ function Bubble({ msg, isLast }: BubbleProps) {
     <div className={`cv-row ${isBuyer ? 'cv-row-right' : 'cv-row-left'} ${isLast ? 'cv-row-new' : ''}`}>
       {!isBuyer && (
         <div className="cv-avatar" style={{ background: `${info.color}22`, borderColor: `${info.color}44` }}>
-          <span>{info.emoji}</span>
+          <PixelAgentIcon color={info.color} size={22} />
         </div>
       )}
       <div className="cv-bubble-wrap">
@@ -66,7 +67,7 @@ function Bubble({ msg, isLast }: BubbleProps) {
       </div>
       {isBuyer && (
         <div className="cv-avatar cv-avatar-right" style={{ background: `${info.color}22`, borderColor: `${info.color}44` }}>
-          <span>{info.emoji}</span>
+          <PixelAgentIcon color={info.color} size={22} />
         </div>
       )}
     </div>
