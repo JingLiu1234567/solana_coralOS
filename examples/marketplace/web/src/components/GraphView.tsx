@@ -93,6 +93,10 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
           const cx1 = x1 + (x2 - x1) * 0.4
           const cx2 = x2 - (x2 - x1) * 0.4
           const info = AGENTS[s] ?? UNKNOWN
+          // The courier is tinted for whoever is actually speaking, not whichever line it walks —
+          // when the buyer broadcasts to all three sellers at once, all three couriers are the
+          // buyer's blue walking outward, not each seller's own color.
+          const senderInfo = AGENTS[lastSender ?? ''] ?? UNKNOWN
           return (
             <g key={s}>
               <path
@@ -113,11 +117,11 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
                   // that coordinate sits under the destination node's own HTML avatar and would be
                   // invisibly hidden behind it), no travel animation.
                   <g shapeRendering="crispEdges" transform={`translate(${midpoint(x1, y1, cx1, y1, cx2, y2, x2, y2).join(',')}) ${CENTER}`}>
-                    <PixelBody color={info.color} />
+                    <PixelBody color={senderInfo.color} />
                   </g>
                 ) : (
                   <g shapeRendering="crispEdges" className="gv-courier" transform={CENTER}>
-                    <PixelBody color={info.color} walking />
+                    <PixelBody color={senderInfo.color} walking />
                     <animateMotion
                       dur="1.8s"
                       repeatCount="indefinite"
