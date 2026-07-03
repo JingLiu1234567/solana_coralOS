@@ -1,15 +1,14 @@
-# Agent marketplace on CoralOS — single track, stock coral-server.
+# TenderNet on CoralOS — stock coral-server, no custom image.
 #
-#   bash build-agents.sh                                 # build images (no bash? `npm run dev` / `just build` build them for you)
-#   docker compose up -d coral                           # start coral-server (MCP coordinator)
-#   cd examples/marketplace && npm install && npm start  # launch the market session
+#   docker compose up -d coral      # start coral-server (MCP coordinator)
+#   .\dev.ps1                       # Windows: creates the session, opens the 4 agent terminals + dashboard
+#   node scripts/demo.js            # macOS/Linux equivalent (see README Quick start)
 #
-# coral-server is a PURE MCP coordinator (wallet-free config). It launches the buyer + the seller
-# personas as containers per session, via the Docker socket. Settlement is the Solana escrow contract
-# (agent-side) — coral-server never holds a keypair.
-#
-# Per-agent options (wallets, persona, LLM keys) are sent by examples/marketplace/start.ts in the
-# session request. The env below is forwarded to the agents coral launches.
+# coral-server is a PURE MCP coordinator. The 4 TenderNet personas (coral-agents/*) run as `provider:
+# local/executable` — coral-server's own container runs each one's startup.sh (which just hands back a
+# connection URL), and the actual negotiating "brain" is the separate `claude` CLI session you start on
+# the host in that agent's directory. Settlement is the Solana escrow contract (agent-side) —
+# coral-server never holds a keypair.
 
 services:
 
@@ -35,12 +34,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - LLM_PROVIDER=${LLM_PROVIDER:-}
       - LLM_MODEL=${LLM_MODEL:-}
-      # Service API keys (the goods sold by deliverService):
-      - HELIUS_API_KEY=${HELIUS_API_KEY}
-      - JUPITER_API_KEY=${JUPITER_API_KEY}
-      - NEWS_API_KEY=${NEWS_API_KEY}
-      # TxODDS World Cup oracle (the `txline` service). Note: the marketplace's start.ts delivers these
-      # per-agent via the session request; this line only matters for the by-hand `docker compose` path.
+      # TxODDS World Cup oracle (separate demo track, examples/txodds) — the `txline` service:
       - TXLINE_API_KEY=${TXLINE_API_KEY}
       - TXLINE_BASE_URL=${TXLINE_BASE_URL:-}
       - INFERENCE_MODEL=${INFERENCE_MODEL:-}
