@@ -1,0 +1,27 @@
+edition = 4
+
+[agent]
+name = "buyer"
+version = "0.1.0"
+description = "UK Government Buyer — autonomous procurement officer that publishes tenders, runs open negotiation with seller agents, evaluates proposals, and settles contracts via Solana escrow."
+summary = "The contracting authority in the TenderNet marketplace."
+readme = "Publishes a WANT into the TenderNet thread, hosts up to DISCUSSION_ROUNDS rounds of open negotiation, selects the best-value proposal, funds a Solana devnet escrow, and releases payment after delivery scores above QUALITY_THRESHOLD. Runtime: Claude Code — open buyer/ in VS Code and start Claude Code."
+
+[agent.license]
+type = "spdx"
+expression = "MIT"
+
+[options]
+BUYER_WALLET    = { type = "string", description = "Devnet wallet pubkey (signs escrow deposits)" }
+BUYER_MAX_SOL   = { type = "f64",   default = 0.001,  description = "Maximum budget per tender (SOL)" }
+BUYER_SERVICE   = { type = "string", default = "govreport", description = "Service type to procure" }
+BUYER_ARG       = { type = "string", default = "", description = "Tender topic / argument passed in WANT" }
+MARKET_SELLERS  = { type = "string", default = "whitehall-analytics,insight-research,stratford-advisory", description = "Seller agent names in the market thread" }
+SOLANA_RPC_URL  = { type = "string", default = "", description = "Solana devnet RPC URL" }
+DISCUSSION_ROUNDS = { type = "f64", default = 3, description = "Max negotiation rounds before closing discussion" }
+QUALITY_THRESHOLD = { type = "f64", default = 60, description = "Minimum delivery score (0-100) to release escrow" }
+
+[runtimes.executable]
+path = "bash"
+arguments = ["startup.sh"]
+transport = "streamable_http"

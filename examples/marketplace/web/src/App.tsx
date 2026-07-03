@@ -1,74 +1,149 @@
 import { useState } from 'react'
-import { useFeed, startMarket } from './api'
-import { MarketView } from './components/MarketView'
-import { Explainer } from './components/Explainer'
-import { AgentGraph } from './components/AgentGraph'
+import { useFeed, useMessages, startMarket } from './api'
+import { GraphView } from './components/GraphView'
+import { ChatView } from './components/ChatView'
+import { explorerTx } from './types'
 
-/** Read ?session=<id> from the URL so the launcher can deep-link straight to a live market. */
 const initialSession = new URLSearchParams(window.location.search).get('session') ?? ''
+
+type ViewMode = 'graph' | 'chat'
 
 export default function App() {
   const [session, setSession] = useState(initialSession)
   const [starting, setStarting] = useState(false)
   const [startErr, setStartErr] = useState<string>()
+  const [view, setView] = useState<ViewMode>('graph')
+
   const { rounds, connected, error } = useFeed(session)
+  const { messages } = useMessages(session)
+
+  // Prefer the latest round that actually has a WANT (a real tender) — guards against a stray/
+  // mistagged message creating an empty phantom round that would otherwise eclipse a finished one.
+  const round = [...rounds].reverse().find(r => r.want) ?? rounds[rounds.length - 1]
+  const lastMessage = messages[messages.length - 1]
+  const lastSender = lastMessage?.sender
+  const isSettled = round?.status === 'settled' || round?.status === 'refunded'
+  const statusLabel = !session ? 'Idle'
+    : !connected ? 'Connecting…'
+    : isSettled ? 'Done ✓'
+    : rounds.length > 0 ? 'Running…'
+    : 'Waiting…'
 
   async function onStart() {
-    setStarting(true)
-    setStartErr(undefined)
+    setStarting(true); setStartErr(undefined)
     try {
       const id = await startMarket()
       setSession(id)
       const url = new URL(window.location.href)
       url.searchParams.set('session', id)
       window.history.replaceState({}, '', url)
-    } catch (e) {
-      setStartErr((e as Error).message)
-    } finally {
-      setStarting(false)
-    }
+    } catch (e) { setStartErr((e as Error).message) }
+    finally { setStarting(false) }
   }
 
   return (
-    <div className="app">
-      <header className="app-head">
-        <h1>TenderNet</h1>
-        <span className="sub">AI-powered government tendering · settled on Solana</span>
-        <span className={`dot ${connected ? 'dot-on' : 'dot-off'}`} data-testid="conn" title={connected ? 'connected' : (error ?? 'disconnected')} />
-      </header>
+    <div className="layout">
+      {/* ── Main canvas ── */}
+      <div className="canvas-area">
+        {view === 'graph'
+          ? <GraphView round={round} lastSender={lastSender} sessionActive={connected && !isSettled} lastMessage={lastMessage} />
+          : <ChatView messages={messages} />
+        }
 
-      <div className="session-bar">
-        <input
-          aria-label="session id"
-          placeholder="paste a market session id…"
-          value={session}
-          onChange={(e) => setSession(e.target.value.trim())}
-        />
-        <button onClick={onStart} disabled={starting} data-testid="start">
-          {starting ? 'starting…' : 'Launch a tender'}
-        </button>
+        {/* bottom input bar */}
+        <div className="canvas-bottom">
+          <input
+            className="canvas-input"
+            placeholder="Paste a session ID or click Launch a Tender →"
+            value={session}
+            onChange={e => setSession(e.target.value.trim())}
+          />
+        </div>
       </div>
-      {startErr && <p className="start-err" data-testid="start-err">{startErr}</p>}
 
-      {rounds.length === 0 && <Explainer />}
+      {/* ── Right sidebar ── */}
+      <aside className="sidebar">
+        <div className="sidebar-title">TenderNet</div>
 
-      <main>
-        {!session && (
-          <p className="empty">Click <strong>Launch a tender</strong> to begin.</p>
+        <div className="sidebar-section">
+          <div className="sidebar-label">SESSION</div>
+          <div className="sidebar-session">{session || '—'}</div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-label">STATUS</div>
+          <div className={`sidebar-status ${isSettled ? 'status-done' : connected && session ? 'status-running' : 'status-idle'}`}>
+            {statusLabel}
+          </div>
+          {error && <div className="sidebar-err">{error}</div>}
+        </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-label">VIEW</div>
+          <div className="view-toggle">
+            <button className={view === 'chat' ? 'toggle-active' : ''} onClick={() => setView('chat')}>Chat</button>
+            <button className={view === 'graph' ? 'toggle-active' : ''} onClick={() => setView('graph')}>Graph</button>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <button className="btn-launch" onClick={onStart} disabled={starting}>
+            {starting ? 'Launching…' : 'Launch a Tender'}
+          </button>
+          {startErr && <p className="sidebar-err">{startErr}</p>}
+        </div>
+
+        {/* Agent legend */}
+        <div className="sidebar-section sidebar-legend">
+          <div className="sidebar-label">AGENTS</div>
+          {[
+            { id: 'buyer',                emoji: '🏛️',  name: 'UK Govt Buyer',       color: '#60a5fa', role: 'BUYER' },
+            { id: 'whitehall-analytics',  emoji: '📊',  name: 'Whitehall Analytics', color: '#f97316', role: 'SELLER' },
+            { id: 'insight-research',     emoji: '🔬',  name: 'Insight Research',    color: '#22c55e', role: 'SELLER' },
+            { id: 'stratford-advisory',   emoji: '🎯',  name: 'Stratford Advisory',  color: '#a855f7', role: 'SELLER' },
+          ].map(a => (
+            <div key={a.id} className="legend-row">
+              <span className="legend-dot" style={{ background: a.color }} />
+              <span className="legend-emoji">{a.emoji}</span>
+              <div className="legend-info">
+                <span className="legend-name">{a.name}</span>
+                <span className="legend-role">{a.role}</span>
+              </div>
+              {lastSender === a.id && <span className="legend-active">●</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Stats */}
+        {round && (
+          <div className="sidebar-section sidebar-stats">
+            <div className="sidebar-label">ROUND {round.round}</div>
+            <div className="stat-row"><span>Bids</span><span>{round.bids.length}</span></div>
+            {round.award && <div className="stat-row"><span>Winner</span><span style={{color:'#22c55e'}}>{round.award.to}</span></div>}
+            {round.deposit && (
+              <div className="stat-row">
+                <span>Escrow</span>
+                <a href={explorerTx(round.deposit.sig)} target="_blank" rel="noreferrer" style={{color:'#9945FF'}}>
+                  Funded ↗
+                </a>
+              </div>
+            )}
+            {round.draftApproved && <div className="stat-row"><span>Score</span><span style={{color:'#14F195'}}>{round.draftApproved.finalScore}/100</span></div>}
+            {round.release && (
+              <div className="stat-row">
+                <span>Settled</span>
+                <a href={explorerTx(round.release.sig)} target="_blank" rel="noreferrer" style={{color:'#14F195'}}>
+                  View tx ↗
+                </a>
+              </div>
+            )}
+          </div>
         )}
-        {session && rounds.length === 0 && (
-          <p className="empty" data-testid="empty">Waiting for the public authority to publish a tender…</p>
-        )}
-        {session && rounds.length > 0 && (
-          <AgentGraph round={rounds[rounds.length - 1]} />
-        )}
-        {session && rounds.length > 1 && (
-          <>
-            <p className="ag-history-label">Previous rounds</p>
-            <MarketView rounds={rounds.slice(0, -1)} />
-          </>
-        )}
-      </main>
+
+        <div className="sidebar-footer">
+          <span>CoralOS · Solana devnet</span>
+        </div>
+      </aside>
     </div>
   )
 }

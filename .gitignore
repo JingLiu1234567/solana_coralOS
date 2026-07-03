@@ -48,3 +48,10 @@ ref/
 
 # Generated wallet addresses (user-specific)
 WALLETS.txt
+
+# dev.ps1 tracks its spawned browser window here to close it on the next run
+.tendernet-browser.pid
+
+# Per-session agent wiring — dev.ps1 regenerates these fresh every run
+coral-agents/*/.mcp.json
+coral-agents/*/.coral-url

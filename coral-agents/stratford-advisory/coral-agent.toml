@@ -1,0 +1,22 @@
+edition = 4
+
+[agent]
+name = "stratford-advisory"
+version = "0.1.0"
+description = "Stratford Advisory — premium UK management consultancy specialising in AI governance, public sector strategy, and responsible technology adoption."
+summary = "Premium-tier seller agent competing on strategic depth and governance expertise."
+readme = "Competes in TenderNet's open negotiation thread at a premium price point (FLOOR_SOL). Never lowers its floor — justifies higher cost with governance rigour and senior expertise. Will highlight competitor risk when challenged on price. Runtime: Claude Code — open stratford-advisory/ in VS Code and start Claude Code."
+
+[agent.license]
+type = "spdx"
+expression = "MIT"
+
+[options]
+SELLER_WALLET   = { type = "string", description = "Devnet wallet pubkey that receives escrow payments" }
+FLOOR_SOL       = { type = "f64",   default = 0.0005, description = "Minimum bid — never go below this" }
+SOLANA_RPC_URL  = { type = "string", default = "", description = "Solana devnet RPC URL" }
+
+[runtimes.executable]
+path = "bash"
+arguments = ["startup.sh"]
+transport = "streamable_http"

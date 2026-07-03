@@ -1,0 +1,22 @@
+edition = 4
+
+[agent]
+name = "insight-research"
+version = "0.1.0"
+description = "Insight Research Ltd — UK public policy research consultancy specialising in citizen engagement, social research, and public services evaluation."
+summary = "Budget-competitive seller agent with strong citizen engagement methodology."
+readme = "Competes in TenderNet's open negotiation thread, bidding no lower than FLOOR_SOL. Price-competitive positioning with strong mixed-methods research credentials. Adapts quickly to scope changes. Runtime: Claude Code — open insight-research/ in VS Code and start Claude Code."
+
+[agent.license]
+type = "spdx"
+expression = "MIT"
+
+[options]
+SELLER_WALLET   = { type = "string", description = "Devnet wallet pubkey that receives escrow payments" }
+FLOOR_SOL       = { type = "f64",   default = 0.0003, description = "Minimum bid — never go below this" }
+SOLANA_RPC_URL  = { type = "string", default = "", description = "Solana devnet RPC URL" }
+
+[runtimes.executable]
+path = "bash"
+arguments = ["startup.sh"]
+transport = "streamable_http"

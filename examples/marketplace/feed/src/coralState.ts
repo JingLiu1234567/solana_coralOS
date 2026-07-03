@@ -1,3 +1,4 @@
+export type { RawMessage } from './foldRounds.js'
 import type { RawMessage } from './foldRounds.js'
 
 /**

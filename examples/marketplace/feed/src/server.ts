@@ -1,84 +1,160 @@
 /**
- * Marketplace feed server — the only backend the visualizer needs.
+ * Marketplace feed server.
  *
- * Reads a CoralOS session's transcript (extended state, behind the dev token), folds it into typed
- * market rounds with `foldRounds`, and serves CORS-enabled JSON for the React app to poll. The browser
- * never touches coral or Solana — this keeps the token server-side and avoids CORS.
+ * Instead of polling coral's /extended (which blocks when idle), this server maintains a
+ * PERSISTENT SSE connection to coral per session. Each SSE event from coral is the full
+ * extended state; we cache the latest one. Frontend polls us, we serve from cache.
  *
- *   GET /api/health                  → { ok: true }
- *   GET /api/feed?session=<sid>      → { session, rounds, updatedAt }   (session defaults to $SESSION)
- *
- * Set FEED_FIXTURE=<path-to-recorded-extended-state.json> to serve a recorded transcript instead of
- * hitting coral — used by the e2e so it exercises the REAL fold/parse path with no devnet.
- *
- * Env: CORAL_SERVER_URL (default http://localhost:5555), CORAL_TOKEN (default dev),
- *      SESSION, MARKET_SELLERS (csv for the declined column), FEED_FIXTURE, PORT (default 4000).
+ *   POST /api/start              → { session }
+ *   GET  /api/feed?session=<id>  → { session, rounds, updatedAt }
+ *   GET  /api/messages?session=  → { session, messages, updatedAt }
  */
 import express from 'express'
 import { readFileSync } from 'node:fs'
-import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { foldRounds } from './foldRounds.js'
-import { collectMessages } from './coralState.js'
+import { collectMessages, type RawMessage } from './coralState.js'
 
-const MARKET_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..') // examples/marketplace
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..') // solana_coralOS root
 
 const BASE = process.env.CORAL_SERVER_URL ?? 'http://localhost:5555'
 const TOKEN = process.env.CORAL_TOKEN ?? 'dev'
-const NS = 'default'
+const NS = 'tendernet'
 const PORT = Number(process.env.PORT ?? 4000)
 const DEFAULT_SESSION = process.env.SESSION ?? ''
 const FIXTURE = process.env.FEED_FIXTURE
-const SELLERS = (process.env.MARKET_SELLERS ?? 'seller-cheap,seller-premium,seller-lazy')
+const SELLERS = (process.env.MARKET_SELLERS ?? 'whitehall-analytics,insight-research,stratford-advisory')
   .split(',').map((s) => s.trim()).filter(Boolean)
 
-/** Fetch a session's raw extended state — from the FEED_FIXTURE file, else from coral. */
-async function readState(session: string): Promise<unknown> {
-  if (FIXTURE) return JSON.parse(readFileSync(FIXTURE, 'utf8'))
-  const r = await fetch(`${BASE}/api/v1/local/session/${NS}/${session}/extended`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  })
-  if (!r.ok) throw new Error(`coral ${r.status}: ${(await r.text()).slice(0, 200)}`)
-  return r.json()
+// ── Per-session state cache ──────────────────────────────────────────────────
+
+interface SessionCache {
+  messages: RawMessage[]
+  rawState: unknown
+  updatedAt: Date
+  watching: boolean
+}
+const cache = new Map<string, SessionCache>()
+
+/**
+ * Poll coral's /extended endpoint and keep cache up-to-date.
+ *
+ * This used to assume /extended was a persistent SSE stream (events framed as
+ * "data: {...}\n\n"). The deployed coral-server image instead answers with a single
+ * plain `application/json` body per request (confirmed: it 406s on
+ * `Accept: text/event-stream`), so the SSE framing never matched and every
+ * response was silently dropped. Polling the plain JSON directly instead.
+ */
+async function watchSession(session: string) {
+  if (cache.has(session) && cache.get(session)!.watching) return
+  const entry: SessionCache = { messages: [], rawState: null, updatedAt: new Date(), watching: true }
+  cache.set(session, entry)
+  console.error(`[feed] watching session ${session}`)
+
+  const loop = async () => {
+    while (entry.watching) {
+      try {
+        const r = await fetch(`${BASE}/api/v1/local/session/${NS}/${session}/extended`, {
+          headers: { Authorization: `Bearer ${TOKEN}` },
+        })
+        if (!r.ok) {
+          await delay(2000)
+          continue
+        }
+        const state = await r.json()
+        const newMessages = collectMessages(state)
+        if (newMessages.length !== entry.messages.length) {
+          console.error(`[feed] ${session.slice(0,8)} — ${newMessages.length} messages`)
+        }
+        entry.rawState = state
+        entry.messages = newMessages
+        entry.updatedAt = new Date()
+      } catch (e) {
+        console.error(`[feed] /extended error: ${(e as Error).message} — retry in 2s`)
+      }
+      await delay(2000)
+    }
+  }
+
+  loop().catch(console.error)
 }
 
-const app = express()
-app.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  next()
-})
+function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
+// ── Express app ─────────────────────────────────────────────────────────────
+
+const app = express()
+app.use((_req, res, next) => { res.setHeader('Access-Control-Allow-Origin', '*'); next() })
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
-/** Operator trigger: launch a market session (runs the marketplace launcher) and return its id. */
-app.post('/api/start', (_req, res) => {
-  const child = spawn('npm', ['start'], { cwd: MARKET_DIR, shell: true })
-  let buf = ''
-  let done = false
-  const reply = (code: number, body: unknown) => { if (!done) { done = true; res.status(code).json(body) } }
-  const onData = (d: Buffer) => {
-    buf += d.toString()
-    const m = buf.match(/Market session ([a-f0-9-]+)/)
-    if (m) reply(200, { session: m[1] })
+app.post('/api/start', async (_req, res) => {
+  try {
+    const r = await fetch(`${BASE}/api/v1/local/session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentGraphRequest: {
+          agents: [
+            { id: { name: 'buyer', version: '0.1.0', registrySourceId: { type: 'local' } }, name: 'buyer', provider: { type: 'local', runtime: 'executable' }, blocking: false, options: {} },
+            { id: { name: 'whitehall-analytics', version: '0.1.0', registrySourceId: { type: 'local' } }, name: 'whitehall-analytics', provider: { type: 'local', runtime: 'executable' }, blocking: false, options: {} },
+            { id: { name: 'insight-research', version: '0.1.0', registrySourceId: { type: 'local' } }, name: 'insight-research', provider: { type: 'local', runtime: 'executable' }, blocking: false, options: {} },
+            { id: { name: 'stratford-advisory', version: '0.1.0', registrySourceId: { type: 'local' } }, name: 'stratford-advisory', provider: { type: 'local', runtime: 'executable' }, blocking: false, options: {} },
+          ],
+          groups: [['buyer', 'whitehall-analytics', 'insight-research', 'stratford-advisory']],
+        },
+        namespaceProvider: { type: 'create_if_not_exists', namespaceRequest: { name: NS } },
+        execution: { mode: 'immediate', runtimeSettings: { ttl: 86400000 } },
+      }),
+    })
+    const data = (await r.json()) as Record<string, unknown>
+    if (!r.ok) return res.status(502).json({ error: `coral ${r.status}`, details: data })
+    const session = data.sessionId as string
+    if (!session) return res.status(502).json({ error: 'no sessionId in response', details: data })
+    watchSession(session)  // start persistent SSE watcher in background
+    res.json({ session })
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message })
   }
-  child.stdout.on('data', onData)
-  child.stderr.on('data', onData)
-  child.on('exit', (c) => reply(500, { error: `launcher exited ${c} without a session`, log: buf.slice(-400) }))
-  setTimeout(() => reply(504, { error: 'launcher timed out', log: buf.slice(-400) }), 30_000)
 })
 
-app.get('/api/feed', async (req, res) => {
+function getCache(session: string): SessionCache | null {
+  if (FIXTURE) {
+    const state = JSON.parse(readFileSync(FIXTURE, 'utf8'))
+    return { messages: collectMessages(state), rawState: state, updatedAt: new Date(), watching: false }
+  }
+  const entry = cache.get(session)
+  if (!entry) {
+    watchSession(session)  // auto-attach watcher if missing (e.g. server restarted)
+    return null
+  }
+  return entry
+}
+
+app.get('/api/feed', (req, res) => {
   const session = FIXTURE ? 'fixture' : ((req.query.session as string) || DEFAULT_SESSION)
-  if (!FIXTURE && !session) return res.status(400).json({ error: 'no session — pass ?session=<id> or set SESSION' })
+  if (!FIXTURE && !session) return res.status(400).json({ error: 'no session' })
+  const entry = getCache(session)
+  if (!entry) return res.json({ session, rounds: [], updatedAt: new Date().toISOString(), waiting: true })
   try {
-    const rounds = foldRounds(collectMessages(await readState(session)), SELLERS)
-    res.json({ session, rounds, updatedAt: new Date().toISOString() })
+    const rounds = foldRounds(entry.messages, SELLERS)
+    res.json({ session, rounds, updatedAt: entry.updatedAt.toISOString() })
   } catch (e) {
     res.status(502).json({ error: `feed failed: ${(e as Error).message}` })
   }
 })
 
-app.listen(PORT, () => console.error(`[feed] http://localhost:${PORT}/api/feed  (${FIXTURE ? `fixture=${FIXTURE}` : `coral=${BASE}`})`))
+app.get('/api/messages', (req, res) => {
+  const session = FIXTURE ? 'fixture' : ((req.query.session as string) || DEFAULT_SESSION)
+  if (!FIXTURE && !session) return res.status(400).json({ error: 'no session' })
+  const entry = getCache(session)
+  if (!entry) return res.json({ session, messages: [], updatedAt: new Date().toISOString(), waiting: true })
+  res.json({ session, messages: entry.messages, updatedAt: entry.updatedAt.toISOString() })
+})
+
+app.listen(PORT, () => console.error(`[feed] http://localhost:${PORT}  session-watcher mode  (coral=${BASE})`))
+
+// If DEFAULT_SESSION is set, watch it immediately on startup
+if (DEFAULT_SESSION) watchSession(DEFAULT_SESSION)

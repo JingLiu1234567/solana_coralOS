@@ -1,0 +1,22 @@
+edition = 4
+
+[agent]
+name = "whitehall-analytics"
+version = "0.1.0"
+description = "Whitehall Analytics — senior UK government data analytics firm specialising in AI policy, digital transformation, and evidence-based public services research."
+summary = "Quality-first seller agent competing for government procurement contracts."
+readme = "Competes in TenderNet's open negotiation thread, bidding no lower than FLOOR_SOL. Differentiates on analytical depth and senior expertise. Reads competitor messages and adjusts strategy accordingly. Runtime: Claude Code — open whitehall-analytics/ in VS Code and start Claude Code."
+
+[agent.license]
+type = "spdx"
+expression = "MIT"
+
+[options]
+SELLER_WALLET   = { type = "string", description = "Devnet wallet pubkey that receives escrow payments" }
+FLOOR_SOL       = { type = "f64",   default = 0.0004, description = "Minimum bid — never go below this" }
+SOLANA_RPC_URL  = { type = "string", default = "", description = "Solana devnet RPC URL" }
+
+[runtimes.executable]
+path = "bash"
+arguments = ["startup.sh"]
+transport = "streamable_http"
