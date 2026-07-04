@@ -12,9 +12,9 @@ import { SettlementCelebration } from './SettlementCelebration'
 
 export const AGENTS: Record<string, { label: string; color: string; sub: string }> = {
   buyer:                { label: 'UK Govt Buyer',        color: '#60a5fa', sub: 'BUYER' },
-  'whitehall-analytics':{ label: 'Whitehall Analytics',  color: '#f97316', sub: 'AGENT' },
-  'insight-research':   { label: 'Insight Research',     color: '#22c55e', sub: 'AGENT' },
-  'stratford-advisory': { label: 'Stratford Advisory',   color: '#a855f7', sub: 'AGENT' },
+  'whitehall-analytics':{ label: 'Whitehall Analytics',  color: '#f97316', sub: 'SELLER' },
+  'insight-research':   { label: 'Insight Research',     color: '#22c55e', sub: 'SELLER' },
+  'stratford-advisory': { label: 'Stratford Advisory',   color: '#a855f7', sub: 'SELLER' },
 }
 const UNKNOWN = { label: 'Agent', color: '#64748b', sub: 'AGENT' }
 
