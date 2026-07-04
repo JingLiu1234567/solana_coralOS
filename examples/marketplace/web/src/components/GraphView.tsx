@@ -145,7 +145,6 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
         const info = AGENTS[id] ?? UNKNOWN
         const isActive = lastSender === id
         const isWinner = winner === id
-        const isBuyer = id === 'buyer'
         return (
           <div
             key={id}
@@ -159,7 +158,7 @@ export function GraphView({ round, lastSender, sessionActive, lastMessage }: Pro
           >
             <div className="gv-node-avatar"><PixelAgentIcon color={info.color} size={32} /></div>
             <div className="gv-node-box" style={{ borderColor: isActive ? info.color : isWinner ? info.color : undefined }}>
-              <span className="gv-node-sub">{isBuyer ? 'HUMAN' : info.sub}</span>
+              <span className="gv-node-sub">{info.sub}</span>
               <span className="gv-node-name">{info.label}</span>
               {isWinner && <span className="gv-node-won">AWARDED ✓</span>}
             </div>
