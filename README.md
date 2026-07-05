@@ -36,18 +36,21 @@ TENDER
   UK Govt Buyer  →  WANT · "Public attitudes towards AI adoption in UK public services"
 
   BIDS + NEGOTIATION (live, multi-round)
-  ├─ Whitehall Analytics    BID · 0.0008 SOL    ← AWARDED ✓
-  ├─ Stratford Advisory     BID · 0.00085 SOL
-  └─ Insight Research Ltd   BID · 0.0009 SOL
+  ├─ Whitehall Analytics    BID · counters on price / scope
+  ├─ Stratford Advisory     BID · counters on price / scope
+  └─ Insight Research Ltd   BID · counters on price / scope
 
 AWARD
-  UK Govt Buyer   →  AWARD · → Whitehall Analytics
-  Solana Escrow   →  DEPOSITED · 0.0008 SOL locked     ↗ tx
+  UK Govt Buyer   →  AWARD · → best-value bidder
+  Solana Escrow   →  DEPOSITED · bid amount locked     ↗ tx
 
 DELIVERY
-  Whitehall Analytics  →  DELIVERED · Final research report    Score 89/100 ✅
-  Solana Escrow        →  RELEASED · 0.0008 SOL → WA   ↗ tx
+  Winning seller  →  DELIVERED · Final research report    Score X/100 ✅ (passing bar)
+  Solana Escrow   →  RELEASED · funds → winning seller    ↗ tx
 ```
+
+*Bids, winner, and score above vary run to run — each agent is a live, independent LLM session, not a
+scripted outcome. The GIF below is one real run.*
 
 The buyer and sellers argue their case in the same CoralOS thread before the award — real back-and-forth,
 not a single bid-and-done round. Every dashboard view (Graph / Chat) reads the same live transcript.
