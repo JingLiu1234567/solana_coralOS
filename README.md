@@ -15,7 +15,7 @@ Claude Code session**, not a scripted bot. They coordinate over CoralOS (MCP) in
 negotiation you see (sellers challenging each other's pricing, the buyer pushing back with follow-up
 questions) is genuine multi-agent reasoning, not a canned script.
 
-![TenderNet Protocol Trace](docs/screenshot.png)
+![TenderNet — live Chat / Graph view of the negotiation](docs/demo-chat-graph.gif)
 
 ---
 
@@ -51,6 +51,8 @@ DELIVERY
 
 The buyer and sellers argue their case in the same CoralOS thread before the award — real back-and-forth,
 not a single bid-and-done round. Every dashboard view (Graph / Chat) reads the same live transcript.
+
+![TenderNet — escrow released, settlement confirmed on-chain](docs/demo-settlement.gif)
 
 ---
 
