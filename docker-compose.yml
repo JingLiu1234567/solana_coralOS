@@ -24,8 +24,8 @@ services:
       - "5555:5555"
     environment:
       - CONFIG_FILE_PATH=/config/coral.toml
-      # Forwarded to the agents coral launches:
-      - SELLER_WALLET=${WALLET}
+      # Forwarded to the agents coral launches. Each seller persona's own receive wallet lives in
+      # its coral-agents/<name>/CLAUDE.md instead of a shared var — see WALLETS.txt.
       - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.devnet.solana.com}
       - BUYER_KEYPAIR_B58=${BUYER_KEYPAIR_B58}
       - BUYER_MAX_SOL=${BUYER_MAX_SOL:-0.001}

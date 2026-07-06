@@ -66,13 +66,20 @@ Run from the repo root (`C:\Users\JingLiu\solana_coralOS`):
 node scripts/solana/balance.mjs
 
 # Deposit SOL into escrow after awarding (prints REFERENCE= — share with seller)
-node scripts/solana/deposit.mjs --seller GqF68tFQ4BBdi7xyhnZnFXw65hauMHqkpztxpjRLbikW --amount <SOL>
+node scripts/solana/deposit.mjs --seller <SELLER_WALLET_FOR_WINNER> --amount <SOL>
 
 # Release escrow after approving final draft
-node scripts/solana/release.mjs --seller GqF68tFQ4BBdi7xyhnZnFXw65hauMHqkpztxpjRLbikW --reference <REFERENCE>
+node scripts/solana/release.mjs --seller <SELLER_WALLET_FOR_WINNER> --reference <REFERENCE>
 ```
 
-Seller wallet: `GqF68tFQ4BBdi7xyhnZnFXw65hauMHqkpztxpjRLbikW`
+Each seller persona has its own wallet — always pass the address matching whoever you named in
+your own **AWARD** `to=<seller-name>` line, never a different one:
+
+| Seller name (`to=`) | Wallet |
+|---|---|
+| `whitehall-analytics` | `GqF68tFQ4BBdi7xyhnZnFXw65hauMHqkpztxpjRLbikW` |
+| `insight-research` | `FsqVso3tSGSNY9NcDxnt7aHCyuJ6ScVJFG53Auy47WFv` |
+| `stratford-advisory` | `5eVgQSF2RCsLnyWyzhZ7kHPAyH5KqK691EEeXNyUWbND` |
 
 ## Full Workflow
 

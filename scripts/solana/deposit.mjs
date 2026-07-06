@@ -4,18 +4,20 @@
 //
 // If --reference is omitted, a new random reference keypair is generated and printed.
 // Save the reference pubkey — you need it for release.mjs and check-funded.mjs.
-import { buyerKeypair, makeProgram, escrowPda, env, SOL } from './_common.mjs'
+import { buyerKeypair, makeProgram, escrowPda, SOL } from './_common.mjs'
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 
 const args = process.argv.slice(2)
 const get = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null }
 
-const sellerArg = get('--seller') || env.WALLET
+const sellerArg = get('--seller')
 const amountArg = parseFloat(get('--amount') || '0')
 const refArg = get('--reference')
 
-if (!sellerArg) { console.error('ERROR: --seller <pubkey> required (or set WALLET in .env)'); process.exit(1) }
+// No single default seller anymore — each persona has its own wallet (see WALLETS.txt),
+// so the buyer must always pass the address of whichever seller actually won the AWARD.
+if (!sellerArg) { console.error('ERROR: --seller <pubkey> required — use the wallet of the awarded seller (see WALLETS.txt)'); process.exit(1) }
 if (!amountArg) { console.error('ERROR: --amount <SOL> required'); process.exit(1) }
 
 const buyer = buyerKeypair()

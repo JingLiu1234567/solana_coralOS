@@ -9,8 +9,9 @@ cd scripts && npm install && cd ..
 node scripts/setup.js
 ```
 
-Generates a buyer + seller devnet keypair, writes them into the repo-root `.env` (filling
-`WALLET` and `BUYER_KEYPAIR_B58` from `.env.example`), and prints both addresses to **fund** at
+Generates a buyer keypair plus one devnet wallet per seller persona, writes them into the
+repo-root `.env` (filling `WALLET_WHITEHALL` / `WALLET_INSIGHT` / `WALLET_STRATFORD` /
+`BUYER_KEYPAIR_B58` from `.env.example`), and prints all 4 addresses to **fund** at
 [faucet.solana.com](https://faucet.solana.com). Re-run after deleting `.env` for fresh keys.
 
 ## `smoke/` — deterministic smoke tests

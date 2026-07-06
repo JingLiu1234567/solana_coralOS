@@ -56,6 +56,18 @@ this entire transaction). You may still add a free-text explanation on the lines
 > re-bid five times or the draft goes through three revisions. Only a genuinely NEW tender (a new WANT
 > from the buyer) would ever use `round=2`.
 
+## Solana Commands
+
+Run from the repo root (`C:\Users\JingLiu\solana_coralOS`):
+
+```bash
+# Verify escrow is funded before delivering any work
+node scripts/solana/check-funded.mjs --reference <REFERENCE_FROM_BUYER> --min <AWARDED_AMOUNT>
+
+# Check your wallet balance (confirm payment received after release)
+node scripts/solana/balance.mjs 5eVgQSF2RCsLnyWyzhZ7kHPAyH5KqK691EEeXNyUWbND  # your own wallet
+```
+
 ## Workflow
 
 *(Full workflow will be added in next step — for now, when you receive a WANT, bid using the literal

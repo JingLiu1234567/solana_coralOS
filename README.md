@@ -93,10 +93,10 @@ in `.env`; they run as your logged-in Claude Code sessions.
 ```sh
 git clone https://github.com/JingLiu1234567/solana_coralOS.git
 cd solana_coralOS
-node scripts/setup.js        # creates .env + two funded devnet wallets
+node scripts/setup.js        # creates .env + 4 devnet wallets (buyer + one per seller persona)
 ```
 
-Fund both printed wallet addresses at [faucet.solana.com](https://faucet.solana.com) (GitHub login
+Fund all 4 printed wallet addresses at [faucet.solana.com](https://faucet.solana.com) (GitHub login
 required; 1 SOL each is plenty).
 
 ### 2. Run

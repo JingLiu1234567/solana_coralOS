@@ -39,20 +39,23 @@ has('just --version') ? ok('just is installed') : warn('just not installed (opti
 
 // ── 2. Wallets ────────────────────────────────────────────────────────────────
 console.log(c('1', '\nWallets'))
-let rpc = 'https://api.devnet.solana.com', seller, buyer
+let rpc = 'https://api.devnet.solana.com', sellers = {}, buyer
 if (!existsSync(envPath)) {
   bad('.env not found — no wallets yet', 'run: node scripts/setup.js')
 } else {
   const env = readFileSync(envPath, 'utf8')
   rpc = env.match(/^SOLANA_RPC_URL=(\S+)/m)?.[1] || rpc
-  seller = env.match(/^WALLET=(\S+)/m)?.[1]
+  for (const [label, key] of [['Whitehall', 'WALLET_WHITEHALL'], ['Insight', 'WALLET_INSIGHT'], ['Stratford', 'WALLET_STRATFORD']]) {
+    sellers[label] = env.match(new RegExp(`^${key}=(\\S+)`, 'm'))?.[1]
+  }
   const b58 = env.match(/^BUYER_KEYPAIR_B58=(\S+)/m)?.[1]
   try { if (b58) { const { default: bs58 } = await import('bs58'); buyer = new PublicKey(bs58.decode(b58).slice(32)).toBase58() } } catch {}
 
-  if (!seller || !buyer) bad('.env is missing WALLET / BUYER_KEYPAIR_B58', 'delete .env and re-run: node scripts/setup.js')
+  const missingSellers = Object.entries(sellers).filter(([, addr]) => !addr).map(([label]) => label)
+  if (missingSellers.length || !buyer) bad('.env is missing a seller wallet or BUYER_KEYPAIR_B58', 'delete .env and re-run: node scripts/setup.js')
   else {
     const conn = new Connection(rpc, 'confirmed')
-    for (const [name, addr] of [['Seller', seller], ['Buyer ', buyer]]) {
+    for (const [name, addr] of [...Object.entries(sellers), ['Buyer', buyer]]) {
       try {
         const sol = await conn.getBalance(new PublicKey(addr)) / LAMPORTS_PER_SOL
         sol > 0 ? ok(`${name} wallet funded — ${sol} SOL`)
@@ -73,11 +76,11 @@ feedUp  ? ok('feed server reachable on :4000')  : warn('feed server not reachabl
 
 // ── 4. Live market (only if the stack is up) ─────────────────────────────────
 console.log(c('1', '\nLive market'))
-const walletsReady = seller && buyer
+const walletsReady = Object.values(sellers).every(Boolean) && buyer
 if (!coralUp || !feedUp) {
   warn('skipped — bring the stack up first', 'run: npm run dev   (or: docker compose up -d coral && node scripts/dashboard.js)')
 } else if (!walletsReady) {
-  warn('skipped — fund the wallets first', 'node scripts/setup.js, then fund both at https://faucet.solana.com')
+  warn('skipped — fund the wallets first', 'node scripts/setup.js, then fund all 4 at https://faucet.solana.com')
 } else {
   ok('stack is up — open http://localhost:5173 and click "Start a market" to run a live, settled round')
 }

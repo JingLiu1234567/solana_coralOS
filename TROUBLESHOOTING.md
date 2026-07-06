@@ -33,10 +33,10 @@ After `node scripts/setup.js` they're printed **and saved to `WALLETS.txt`**. Re
 needs **GitHub sign-in** and rate-limits per account.
 - Make sure you're signed in with GitHub.
 - Request a small amount (1 SOL is plenty — a deposit is ~0.0008).
-- Fund **both** the buyer and seller wallets; devnet SOL persists, so you only fund once.
+- Fund **all 4** wallets (buyer + 3 seller personas); devnet SOL persists, so you only fund once.
 
 ### The buyer never deposits / `deposit.mjs` fails with "insufficient funds"
-The buyer wallet is empty. `just doctor` checks both balances — fund the one it flags (`WALLETS.txt`).
+The buyer wallet is empty. `just doctor` checks all 4 balances — fund the one it flags (`WALLETS.txt`).
 
 ---
 

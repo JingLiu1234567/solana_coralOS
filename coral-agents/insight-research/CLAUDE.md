@@ -65,7 +65,7 @@ Run from the repo root (`C:\Users\JingLiu\solana_coralOS`):
 node scripts/solana/check-funded.mjs --reference <REFERENCE_FROM_BUYER> --min <AWARDED_AMOUNT>
 
 # Check your wallet balance (confirm payment received after release)
-node scripts/solana/balance.mjs GqF68tFQ4BBdi7xyhnZnFXw65hauMHqkpztxpjRLbikW
+node scripts/solana/balance.mjs FsqVso3tSGSNY9NcDxnt7aHCyuJ6ScVJFG53Auy47WFv  # your own wallet
 ```
 
 ## Full Workflow
